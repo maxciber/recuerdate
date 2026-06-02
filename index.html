@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recuérdate</title>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --paper:#faf6ef;
+  --paper-dark:#f0e9d8;
+  --ink:#2c2416;
+  --ink-light:#6b5c42;
+  --ink-faint:#b5a48a;
+  --post-it:#f6e96b;
+  --post-it-shadow:#d4c84a;
+  --accent:#c8411b;
+  --streak:#e07b20;
+}
+body{background:var(--paper);font-family:'Lora',Georgia,serif;color:var(--ink);min-height:100vh;position:relative;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(transparent,transparent 31px,#d4c5a930 32px);pointer-events:none;z-index:0}
+
+/* ── SCREENS ── */
+.screen{display:none;position:relative;z-index:1}
+.screen.active{display:block}
+
+/* ── AUTH ── */
+.auth-wrap{max-width:420px;margin:0 auto;padding:4rem 1.5rem 3rem;text-align:center}
+.auth-logo{font-family:'Special Elite',monospace;font-size:2.2rem;color:var(--ink);margin-bottom:0.4rem}
+.auth-logo span{color:var(--accent)}
+.auth-sub{font-size:0.9rem;color:var(--ink-faint);font-style:italic;margin-bottom:3rem;line-height:1.6}
+.auth-card{background:var(--paper-dark);border:1px solid #c4b49040;border-radius:4px;padding:2rem}
+.auth-label{font-family:'Special Elite',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);display:block;text-align:left;margin-bottom:8px}
+.auth-input{width:100%;background:var(--paper);border:1px solid #c4b49060;border-radius:3px;padding:12px 14px;font-family:'Lora',serif;font-size:1rem;color:var(--ink);outline:none;transition:border-color 0.2s}
+.auth-input:focus{border-color:var(--accent)}
+.auth-btn{display:block;width:100%;margin-top:1rem;background:var(--ink);color:var(--paper);border:none;border-radius:3px;padding:13px;font-family:'Special Elite',monospace;font-size:0.85rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.15s}
+.auth-btn:hover{background:#1a1208}
+.auth-btn:disabled{background:var(--ink-faint);cursor:default}
+.auth-msg{margin-top:1rem;font-size:0.85rem;color:var(--ink-light);font-style:italic;min-height:1.4rem;line-height:1.4}
+.auth-msg.error{color:var(--accent)}
+.auth-sent{padding:1.5rem;text-align:center}
+.auth-sent-icon{font-size:2rem;margin-bottom:0.75rem}
+.auth-sent-title{font-family:'Special Elite',monospace;font-size:1.1rem;color:var(--ink);margin-bottom:0.5rem}
+.auth-sent-sub{font-size:0.85rem;color:var(--ink-light);font-style:italic;line-height:1.6}
+
+/* ── APP ── */
+.app{max-width:640px;margin:0 auto;padding:2rem 1.5rem 4rem}
+header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2.5rem}
+.logo{font-family:'Special Elite',monospace;font-size:1.6rem;color:var(--ink);letter-spacing:-0.5px}
+.logo span{color:var(--accent)}
+.header-right{display:flex;gap:10px;align-items:flex-start}
+.streak-badge{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--paper-dark);border:1px solid #c4b49050;border-radius:8px;padding:8px 14px;cursor:default}
+.streak-num{font-family:'Special Elite',monospace;font-size:1.4rem;color:var(--streak);line-height:1}
+.streak-label{font-size:0.65rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:1.5px}
+.logout-btn{background:none;border:1px solid #c4b49050;border-radius:8px;padding:8px 12px;font-family:'Special Elite',monospace;font-size:0.65rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:1px;cursor:pointer;transition:all 0.2s}
+.logout-btn:hover{color:var(--accent);border-color:var(--accent)}
+.date-line{font-family:'Special Elite',monospace;font-size:0.8rem;color:var(--ink-light);letter-spacing:1px;margin-bottom:1.5rem;text-transform:uppercase}
+.posit-wrap{position:relative;margin-bottom:2rem}
+.posit{background:var(--post-it);border-radius:2px;padding:1.5rem 1.5rem 2rem;position:relative;box-shadow:3px 3px 0 var(--post-it-shadow),6px 6px 12px #0000001a;transform:rotate(-0.4deg);min-height:160px}
+.posit::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#e8d84a,#f0e060,#e8d84a);border-radius:2px 2px 0 0}
+.posit-written{box-shadow:2px 2px 0 var(--post-it-shadow),4px 4px 8px #00000015}
+textarea{width:100%;background:transparent;border:none;outline:none;resize:none;font-family:'Special Elite',monospace;font-size:1rem;color:var(--ink);line-height:1.7;min-height:120px;caret-color:var(--accent)}
+textarea::placeholder{color:#b8a45a80}
+.char-count{position:absolute;bottom:10px;right:14px;font-family:'Special Elite',monospace;font-size:0.7rem;color:#b8a45a80}
+.btn-save{display:block;width:100%;background:var(--ink);color:var(--paper);border:none;border-radius:3px;padding:14px;font-family:'Special Elite',monospace;font-size:1rem;letter-spacing:1.5px;cursor:pointer;transition:background 0.15s,transform 0.1s;text-transform:uppercase}
+.btn-save:hover{background:#1a1208}
+.btn-save:active{transform:scale(0.99)}
+.btn-save:disabled{background:var(--ink-faint);cursor:default}
+.written-note{font-family:'Special Elite',monospace;font-size:1rem;color:var(--ink);line-height:1.7;white-space:pre-wrap}
+.written-time{font-size:0.7rem;color:#b8a45a90;margin-top:0.75rem;font-family:'Special Elite',monospace}
+.edit-btn{position:absolute;top:12px;right:14px;font-family:'Special Elite',monospace;font-size:0.65rem;color:#b8a45a;background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:1px;opacity:0.6;transition:opacity 0.2s}
+.edit-btn:hover{opacity:1}
+.nav-tabs{display:flex;gap:0;margin-bottom:2rem;border-bottom:1px solid #c4b49030}
+.nav-tab{font-family:'Special Elite',monospace;font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);background:none;border:none;padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.2s,border-color 0.2s}
+.nav-tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.stats-row{display:flex;gap:1rem;margin-bottom:2rem}
+.stat-box{flex:1;background:var(--paper-dark);border:1px solid #c4b49025;border-radius:3px;padding:1rem;text-align:center}
+.stat-num{font-family:'Special Elite',monospace;font-size:1.6rem;color:var(--ink);display:block}
+.stat-lbl{font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);margin-top:4px;display:block}
+.history-list{display:flex;flex-direction:column;gap:0}
+.history-item{display:flex;gap:1rem;align-items:flex-start;padding:0.75rem 0;border-bottom:1px solid #c4b49020}
+.history-date-col{font-family:'Special Elite',monospace;font-size:0.7rem;color:var(--ink-faint);min-width:64px;padding-top:2px;text-align:right;letter-spacing:0.5px}
+.history-text{font-size:0.9rem;color:var(--ink-light);line-height:1.55;font-style:italic;flex:1}
+.memories-grid{display:flex;flex-direction:column;gap:1rem}
+.memory-card{background:var(--paper-dark);border:1px solid #c4b49030;border-radius:3px;padding:1rem 1.25rem;border-left:3px solid var(--accent)}
+.memory-year{font-family:'Special Elite',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+.memory-text{font-size:0.95rem;color:var(--ink-light);line-height:1.6;font-style:italic}
+.empty-memories{text-align:center;padding:2rem;color:var(--ink-faint);font-style:italic;font-size:0.9rem;line-height:1.8}
+.section-title{font-family:'Special Elite',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--ink-faint);margin-bottom:1.2rem}
+.milestone-toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(100px);background:var(--ink);color:var(--paper);padding:12px 24px;border-radius:3px;font-family:'Special Elite',monospace;font-size:0.85rem;letter-spacing:1px;transition:transform 0.4s cubic-bezier(.34,1.56,.64,1);z-index:100;white-space:nowrap}
+.milestone-toast.show{transform:translateX(-50%) translateY(0)}
+.loading-line{text-align:center;padding:3rem;font-family:'Special Elite',monospace;font-size:0.8rem;color:var(--ink-faint);letter-spacing:2px;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<!-- SCREEN: AUTH -->
+<div class="screen active" id="screen-auth">
+  <div class="auth-wrap">
+    <div class="auth-logo">Recuér<span>date</span></div>
+    <div class="auth-sub">Un pósit al día.<br>Tus recuerdos, para siempre.</div>
+    <div class="auth-card">
+      <div id="auth-form-wrap">
+        <label class="auth-label" for="emailInput">Tu correo</label>
+        <input class="auth-input" type="email" id="emailInput" placeholder="nombre@correo.com" autocomplete="email">
+        <button class="auth-btn" id="authSubmitBtn" onclick="sendMagicLink()">Entrar con magic link</button>
+        <div class="auth-msg" id="authMsg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: APP -->
+<div class="screen" id="screen-app">
+  <div class="app">
+    <header>
+      <div class="logo">Recuér<span>date</span></div>
+      <div class="header-right">
+        <div class="streak-badge">
+          <span class="streak-num" id="streakNum">0</span>
+          <span class="streak-label">días seguidos</span>
+        </div>
+        <button class="logout-btn" onclick="logout()">Salir</button>
+      </div>
+    </header>
+
+    <nav class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('hoy')">Hoy</button>
+      <button class="nav-tab" onclick="switchTab('historial')">Historial</button>
+      <button class="nav-tab" onclick="switchTab('recuerdos')">Recuerdos</button>
+    </nav>
+
+    <div class="tab-content active" id="tab-hoy">
+      <div class="date-line" id="todayDate"></div>
+      <div id="positWrap"></div>
+      <button class="btn-save" id="saveBtn" onclick="saveEntry()">Guardar pósit</button>
+    </div>
+
+    <div class="tab-content" id="tab-historial">
+      <div class="stats-row">
+        <div class="stat-box"><span class="stat-num" id="statTotal">—</span><span class="stat-lbl">pósits escritos</span></div>
+        <div class="stat-box"><span class="stat-num" id="statStreak">—</span><span class="stat-lbl">racha actual</span></div>
+        <div class="stat-box"><span class="stat-num" id="statBest">—</span><span class="stat-lbl">mejor racha</span></div>
+      </div>
+      <div class="history-list" id="historyList"><div class="loading-line">Cargando...</div></div>
+    </div>
+
+    <div class="tab-content" id="tab-recuerdos">
+      <div class="memories-grid" id="memoriesGrid"><div class="loading-line">Cargando...</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="milestone-toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG — reemplaza con tus credenciales reales
+// ─────────────────────────────────────────────
+const SUPABASE_URL = 'https://rxaxdcuitsvwsrwgalig.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_2uh8VlzNxhWW-UqpRjygdw_vcjDIY6l'
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+// ─────────────────────────────────────────────
+// DB LAYER — toda la lógica de datos aquí
+// Migración futura: solo tocar estas funciones
+// ─────────────────────────────────────────────
+const DB = {
+  async getEntry(dateKey) {
+    const { data, error } = await sb
+      .from('entries')
+      .select('*')
+      .eq('date', dateKey)
+      .maybeSingle()
+    if (error) { console.error('getEntry:', error); return null }
+    return data
+  },
+
+  async saveEntry(dateKey, text) {
+    const { data: { user } } = await sb.auth.getUser()
+    const { error } = await sb
+      .from('entries')
+      .upsert(
+        { user_id: user.id, date: dateKey, text, saved_at: new Date().toISOString() },
+        { onConflict: 'user_id,date' }
+      )
+    if (error) { console.error('saveEntry:', error); return false }
+    return true
+  },
+
+  async getAllEntries() {
+    const { data, error } = await sb
+      .from('entries')
+      .select('*')
+      .order('date', { ascending: false })
+    if (error) { console.error('getAllEntries:', error); return [] }
+    return data || []
+  },
+
+  async getMemories(todayKey) {
+    const [year, mm, dd] = todayKey.split('-')
+    const { data, error } = await sb
+      .from('entries')
+      .select('*')
+      .neq('date', todayKey)
+      .filter('date', 'like', `%-${mm}-${dd}`)
+      .order('date', { ascending: false })
+    if (error) { console.error('getMemories:', error); return [] }
+    return (data || []).filter(e => e.date.split('-')[0] < year)
+  }
+}
+
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+function todayKey() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+function formatDate(dateKey) {
+  const [y,m,d] = dateKey.split('-').map(Number)
+  return new Date(y,m-1,d).toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'})
+}
+
+function formatDateShort(dateKey) {
+  const [y,m,d] = dateKey.split('-').map(Number)
+  return new Date(y,m-1,d).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})
+}
+
+function calcStreak(entries) {
+  if (!entries.length) return { current: 0, best: 0 }
+  const keys = entries.map(e => e.date).sort((a,b) => b.localeCompare(a))
+  const today = todayKey()
+  const yesterday = (() => {
+    const d = new Date(); d.setDate(d.getDate()-1)
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  })()
+
+  let current = 0
+  if (keys[0] === today || keys[0] === yesterday) {
+    for (let i = 0; i < keys.length; i++) {
+      const base = new Date(keys[0].replace(/-/g,'/'))
+      base.setDate(base.getDate() - i)
+      const expected = `${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,'0')}-${String(base.getDate()).padStart(2,'0')}`
+      if (keys[i] === expected) current++
+      else break
+    }
+  }
+
+  let best = 1, run = 1
+  for (let i = 1; i < keys.length; i++) {
+    const prev = new Date(keys[i-1].replace(/-/g,'/'))
+    const curr = new Date(keys[i].replace(/-/g,'/'))
+    if (Math.round((prev-curr)/(864e5)) === 1) { run++; if (run > best) best = run }
+    else run = 1
+  }
+  return { current, best: Math.max(current, best) }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.classList.add('show')
+  setTimeout(() => t.classList.remove('show'), 3500)
+}
+
+function checkMilestone(streak) {
+  const m = {7:'7 días seguidos. Ya es un hábito.',30:'Un mes completo. Eres constancia.',100:'100 días. Leyenda.',365:'Un año. Ya tienes recuerdos reales.'}
+  if (m[streak]) showToast(m[streak])
+}
+
+// ─────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────
+async function sendMagicLink() {
+  const email = document.getElementById('emailInput').value.trim()
+  const msg = document.getElementById('authMsg')
+  const btn = document.getElementById('authSubmitBtn')
+  if (!email || !email.includes('@')) {
+    msg.textContent = 'Escribe un correo válido.'
+    msg.classList.add('error')
+    return
+  }
+  btn.disabled = true
+  btn.textContent = 'Enviando...'
+  msg.textContent = ''
+  msg.classList.remove('error')
+
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true }
+  })
+
+  if (error) {
+    msg.textContent = 'Error al enviar. Inténtalo de nuevo.'
+    msg.classList.add('error')
+    btn.disabled = false
+    btn.textContent = 'Entrar con magic link'
+    return
+  }
+
+  document.getElementById('auth-form-wrap').innerHTML = `
+    <div class="auth-sent">
+      <div class="auth-sent-icon">✉️</div>
+      <div class="auth-sent-title">Revisa tu correo</div>
+      <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${email}</strong><br><br>Haz clic en él para entrar. No caduca en 24h.</div>
+    </div>`
+}
+
+async function logout() {
+  await sb.auth.signOut()
+  showScreen('auth')
+  document.getElementById('auth-form-wrap').innerHTML = `
+    <label class="auth-label" for="emailInput">Tu correo</label>
+    <input class="auth-input" type="email" id="emailInput" placeholder="nombre@correo.com" autocomplete="email">
+    <button class="auth-btn" id="authSubmitBtn" onclick="sendMagicLink()">Entrar con magic link</button>
+    <div class="auth-msg" id="authMsg"></div>`
+}
+
+// ─────────────────────────────────────────────
+// SCREENS
+// ─────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+  document.getElementById('screen-' + name).classList.add('active')
+}
+
+// ─────────────────────────────────────────────
+// RENDER HOY
+// ─────────────────────────────────────────────
+async function renderHoy() {
+  const key = todayKey()
+  document.getElementById('todayDate').textContent = formatDate(key)
+  const entry = await DB.getEntry(key)
+  const wrap = document.getElementById('positWrap')
+  const btn = document.getElementById('saveBtn')
+
+  if (entry) {
+    const t = new Date(entry.saved_at)
+    wrap.innerHTML = `
+      <div class="posit posit-written">
+        <button class="edit-btn" onclick="editEntry('${entry.text.replace(/'/g,"\\'")}')">editar</button>
+        <div class="written-note">${entry.text.replace(/</g,'&lt;')}</div>
+        <div class="written-time">Guardado a las ${t.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>`
+    btn.textContent = '✓ Pósit de hoy guardado'
+    btn.disabled = true
+  } else {
+    wrap.innerHTML = `
+      <div class="posit">
+        <textarea id="entry" maxlength="280" placeholder="¿Qué tal hoy?"></textarea>
+        <span class="char-count" id="charCount">280</span>
+      </div>`
+    btn.textContent = 'Guardar pósit'
+    btn.disabled = false
+    const ta = document.getElementById('entry')
+    const cc = document.getElementById('charCount')
+    ta.addEventListener('input', () => { cc.textContent = 280 - ta.value.length })
+    ta.focus()
+  }
+}
+
+async function saveEntry() {
+  const ta = document.getElementById('entry')
+  if (!ta) return
+  const text = ta.value.trim()
+  if (!text) { ta.focus(); return }
+
+  const btn = document.getElementById('saveBtn')
+  btn.disabled = true
+  btn.textContent = 'Guardando...'
+
+  const ok = await DB.saveEntry(todayKey(), text)
+  if (!ok) {
+    btn.disabled = false
+    btn.textContent = 'Guardar pósit'
+    showToast('Error al guardar. Inténtalo de nuevo.')
+    return
+  }
+
+  const entries = await DB.getAllEntries()
+  const { current } = calcStreak(entries)
+  document.getElementById('streakNum').textContent = current
+  checkMilestone(current)
+  await renderHoy()
+}
+
+function editEntry(currentText) {
+  const wrap = document.getElementById('positWrap')
+  const btn = document.getElementById('saveBtn')
+  wrap.innerHTML = `
+    <div class="posit">
+      <textarea id="entry" maxlength="280">${currentText}</textarea>
+      <span class="char-count" id="charCount">${280 - currentText.length}</span>
+    </div>`
+  btn.textContent = 'Guardar pósit'
+  btn.disabled = false
+  const ta = document.getElementById('entry')
+  const cc = document.getElementById('charCount')
+  ta.addEventListener('input', () => { cc.textContent = 280 - ta.value.length })
+  ta.focus()
+}
+
+// ─────────────────────────────────────────────
+// RENDER HISTORIAL
+// ─────────────────────────────────────────────
+async function renderHistorial() {
+  const entries = await DB.getAllEntries()
+  const { current, best } = calcStreak(entries)
+  document.getElementById('statTotal').textContent = entries.length
+  document.getElementById('statStreak').textContent = current
+  document.getElementById('statBest').textContent = best
+
+  const list = document.getElementById('historyList')
+  if (!entries.length) {
+    list.innerHTML = '<div class="empty-memories">Tu historial aparecerá aquí.</div>'
+    return
+  }
+  list.innerHTML = entries.map(e => `
+    <div class="history-item">
+      <div class="history-date-col">${formatDateShort(e.date)}</div>
+      <div class="history-text">${e.text.replace(/</g,'&lt;')}</div>
+    </div>`).join('')
+}
+
+// ─────────────────────────────────────────────
+// RENDER RECUERDOS
+// ─────────────────────────────────────────────
+async function renderRecuerdos() {
+  const key = todayKey()
+  const memories = await DB.getMemories(key)
+  const grid = document.getElementById('memoriesGrid')
+
+  if (!memories.length) {
+    const all = await DB.getAllEntries()
+    if (all.length < 7) {
+      grid.innerHTML = `<div class="empty-memories">
+        Los recuerdos aparecen cuando llevas un año escribiendo.<br><br>
+        <span style="font-size:0.8rem">Con ${all.length} pósit${all.length!==1?'s':''} escritos, vas bien. Sigue.</span>
+      </div>`
+    } else {
+      grid.innerHTML = '<p class="section-title">Mientras tanto, hace unos días</p>' +
+        all.slice(0,3).map(e => `
+          <div class="memory-card">
+            <div class="memory-year">${formatDateShort(e.date)}</div>
+            <div class="memory-text">${e.text.replace(/</g,'&lt;')}</div>
+          </div>`).join('')
+    }
+    return
+  }
+
+  const thisYear = parseInt(key.split('-')[0])
+  grid.innerHTML = '<p class="section-title">Tal día como hoy</p>' +
+    memories.map(e => {
+      const diff = thisYear - parseInt(e.date.split('-')[0])
+      return `<div class="memory-card">
+        <div class="memory-year">Hace ${diff} año${diff!==1?'s':''} — ${e.date.split('-')[0]}</div>
+        <div class="memory-text">${e.text.replace(/</g,'&lt;')}</div>
+      </div>`
+    }).join('')
+}
+
+// ─────────────────────────────────────────────
+// NAV
+// ─────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.nav-tab').forEach((t,i) => {
+    t.classList.toggle('active', ['hoy','historial','recuerdos'][i] === name)
+  })
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
+  document.getElementById('tab-' + name).classList.add('active')
+  if (name === 'historial') renderHistorial()
+  if (name === 'recuerdos') renderRecuerdos()
+}
+
+// ─────────────────────────────────────────────
+// INIT — detecta sesión al cargar
+// ─────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await sb.auth.getSession()
+
+  if (session) {
+    showScreen('app')
+    await renderHoy()
+    const entries = await DB.getAllEntries()
+    const { current } = calcStreak(entries)
+    document.getElementById('streakNum').textContent = current
+  } else {
+    showScreen('auth')
+  }
+
+  // Escucha cambios de sesión (incluye el magic link redirect)
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session) {
+      showScreen('app')
+      await renderHoy()
+      const entries = await DB.getAllEntries()
+      const { current } = calcStreak(entries)
+      document.getElementById('streakNum').textContent = current
+    } else {
+      showScreen('auth')
+    }
+  })
+}
+
+init()
+</script>
+</body>
+</html>
