@@ -22,7 +22,6 @@
 body{background:var(--paper);font-family:'Lora',Georgia,serif;color:var(--ink);min-height:100vh;position:relative;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(transparent,transparent 31px,#d4c5a930 32px);pointer-events:none;z-index:0}
 
-/* ── SCREENS ── */
 .screen{display:none;position:relative;z-index:1}
 .screen.active{display:block}
 
@@ -94,6 +93,8 @@ textarea::placeholder{color:#b8a45a80}
 .milestone-toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(100px);background:var(--ink);color:var(--paper);padding:12px 24px;border-radius:3px;font-family:'Special Elite',monospace;font-size:0.85rem;letter-spacing:1px;transition:transform 0.4s cubic-bezier(.34,1.56,.64,1);z-index:100;white-space:nowrap}
 .milestone-toast.show{transform:translateX(-50%) translateY(0)}
 .loading-line{text-align:center;padding:3rem;font-family:'Special Elite',monospace;font-size:0.8rem;color:var(--ink-faint);letter-spacing:2px;text-transform:uppercase}
+.export-btn{display:block;width:100%;margin-top:1.5rem;background:none;border:1px solid #c4b49060;border-radius:3px;padding:11px;font-family:'Special Elite',monospace;font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);cursor:pointer;transition:all 0.2s}
+.export-btn:hover{border-color:var(--ink);color:var(--ink)}
 </style>
 </head>
 <body>
@@ -147,6 +148,7 @@ textarea::placeholder{color:#b8a45a80}
         <div class="stat-box"><span class="stat-num" id="statBest">—</span><span class="stat-lbl">mejor racha</span></div>
       </div>
       <div class="history-list" id="historyList"><div class="loading-line">Cargando...</div></div>
+      <button class="export-btn" onclick="exportData()">↓ Exportar mis recuerdos (.json)</button>
     </div>
 
     <div class="tab-content" id="tab-recuerdos">
@@ -159,45 +161,36 @@ textarea::placeholder{color:#b8a45a80}
 
 <script>
 // ─────────────────────────────────────────────
-// CONFIG — reemplaza con tus credenciales reales
+// CONFIG
 // ─────────────────────────────────────────────
 const SUPABASE_URL = 'https://rxaxdcuitsvwsrwgalig.supabase.co'
 const SUPABASE_KEY = 'sb_publishable_2uh8VlzNxhWW-UqpRjygdw_vcjDIY6l'
-
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 
 // ─────────────────────────────────────────────
-// DB LAYER — toda la lógica de datos aquí
-// Migración futura: solo tocar estas funciones
+// DB LAYER — swappable por cualquier backend
 // ─────────────────────────────────────────────
 const DB = {
   async getEntry(dateKey) {
     const { data, error } = await sb
-      .from('entries')
-      .select('*')
-      .eq('date', dateKey)
-      .maybeSingle()
+      .from('entries').select('*').eq('date', dateKey).maybeSingle()
     if (error) { console.error('getEntry:', error); return null }
     return data
   },
 
   async saveEntry(dateKey, text) {
     const { data: { user } } = await sb.auth.getUser()
-    const { error } = await sb
-      .from('entries')
-      .upsert(
-        { user_id: user.id, date: dateKey, text, saved_at: new Date().toISOString() },
-        { onConflict: 'user_id,date' }
-      )
+    const { error } = await sb.from('entries').upsert(
+      { user_id: user.id, date: dateKey, text, saved_at: new Date().toISOString() },
+      { onConflict: 'user_id,date' }
+    )
     if (error) { console.error('saveEntry:', error); return false }
     return true
   },
 
   async getAllEntries() {
     const { data, error } = await sb
-      .from('entries')
-      .select('*')
-      .order('date', { ascending: false })
+      .from('entries').select('*').order('date', { ascending: false })
     if (error) { console.error('getAllEntries:', error); return [] }
     return data || []
   },
@@ -205,8 +198,7 @@ const DB = {
   async getMemories(todayKey) {
     const [year, mm, dd] = todayKey.split('-')
     const { data, error } = await sb
-      .from('entries')
-      .select('*')
+      .from('entries').select('*')
       .neq('date', todayKey)
       .filter('date', 'like', `%-${mm}-${dd}`)
       .order('date', { ascending: false })
@@ -217,49 +209,58 @@ const DB = {
 
 // ─────────────────────────────────────────────
 // UTILS
+// FIX: fechas con destructuring para evitar bugs de timezone
 // ─────────────────────────────────────────────
 function todayKey() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
+function parseDate(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  return new Date(y, m - 1, d) // local time, sin UTC bugs
+}
+
 function formatDate(dateKey) {
-  const [y,m,d] = dateKey.split('-').map(Number)
-  return new Date(y,m-1,d).toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'})
+  return parseDate(dateKey).toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
 }
 
 function formatDateShort(dateKey) {
-  const [y,m,d] = dateKey.split('-').map(Number)
-  return new Date(y,m-1,d).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})
+  return parseDate(dateKey).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' })
 }
 
+// FIX: calcStreak reescrito sin replace(/-/g,'/') y con manejo correcto de timezone
 function calcStreak(entries) {
   if (!entries.length) return { current: 0, best: 0 }
-  const keys = entries.map(e => e.date).sort((a,b) => b.localeCompare(a))
+  const keys = entries.map(e => e.date).sort((a, b) => b.localeCompare(a))
   const today = todayKey()
-  const yesterday = (() => {
-    const d = new Date(); d.setDate(d.getDate()-1)
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-  })()
 
+  const offsetKey = (fromKey, days) => {
+    const d = parseDate(fromKey)
+    d.setDate(d.getDate() + days)
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  }
+
+  const yesterday = offsetKey(today, -1)
+
+  // Racha actual
   let current = 0
   if (keys[0] === today || keys[0] === yesterday) {
+    const anchor = keys[0]
     for (let i = 0; i < keys.length; i++) {
-      const base = new Date(keys[0].replace(/-/g,'/'))
-      base.setDate(base.getDate() - i)
-      const expected = `${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,'0')}-${String(base.getDate()).padStart(2,'0')}`
-      if (keys[i] === expected) current++
+      if (keys[i] === offsetKey(anchor, -i)) current++
       else break
     }
   }
 
+  // Mejor racha histórica
   let best = 1, run = 1
   for (let i = 1; i < keys.length; i++) {
-    const prev = new Date(keys[i-1].replace(/-/g,'/'))
-    const curr = new Date(keys[i].replace(/-/g,'/'))
-    if (Math.round((prev-curr)/(864e5)) === 1) { run++; if (run > best) best = run }
+    const diff = (parseDate(keys[i-1]) - parseDate(keys[i])) / 864e5
+    if (Math.round(diff) === 1) { run++; if (run > best) best = run }
     else run = 1
   }
+
   return { current, best: Math.max(current, best) }
 }
 
@@ -271,8 +272,24 @@ function showToast(msg) {
 }
 
 function checkMilestone(streak) {
-  const m = {7:'7 días seguidos. Ya es un hábito.',30:'Un mes completo. Eres constancia.',100:'100 días. Leyenda.',365:'Un año. Ya tienes recuerdos reales.'}
+  const m = { 7:'7 días seguidos. Ya es un hábito.', 30:'Un mes completo. Eres constancia.', 100:'100 días. Leyenda.', 365:'Un año. Ya tienes recuerdos reales.' }
   if (m[streak]) showToast(m[streak])
+}
+
+// ─────────────────────────────────────────────
+// EXPORT — añadido como sugirió el análisis
+// ─────────────────────────────────────────────
+async function exportData() {
+  const entries = await DB.getAllEntries()
+  if (!entries.length) { showToast('No hay nada que exportar todavía.'); return }
+  const clean = entries.map(e => ({ fecha: e.date, texto: e.text, guardado: e.saved_at }))
+  const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `recuerdate-export-${todayKey()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 // ─────────────────────────────────────────────
@@ -294,7 +311,10 @@ async function sendMagicLink() {
 
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true }
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: 'https://maxciber.github.io/recuerdate/'
+    }
   })
 
   if (error) {
@@ -309,7 +329,7 @@ async function sendMagicLink() {
     <div class="auth-sent">
       <div class="auth-sent-icon">✉️</div>
       <div class="auth-sent-title">Revisa tu correo</div>
-      <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${email}</strong><br><br>Haz clic en él para entrar. No caduca en 24h.</div>
+      <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${email}</strong><br><br>Haz clic en él para entrar.</div>
     </div>`
 }
 
@@ -323,9 +343,6 @@ async function logout() {
     <div class="auth-msg" id="authMsg"></div>`
 }
 
-// ─────────────────────────────────────────────
-// SCREENS
-// ─────────────────────────────────────────────
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
   document.getElementById('screen-' + name).classList.add('active')
@@ -333,7 +350,11 @@ function showScreen(name) {
 
 // ─────────────────────────────────────────────
 // RENDER HOY
+// FIX: editEntry ya no pasa texto por atributo HTML
+// Usa un Map en memoria para evitar bugs con comillas y saltos de línea
 // ─────────────────────────────────────────────
+const _entryCache = new Map()
+
 async function renderHoy() {
   const key = todayKey()
   document.getElementById('todayDate').textContent = formatDate(key)
@@ -342,16 +363,19 @@ async function renderHoy() {
   const btn = document.getElementById('saveBtn')
 
   if (entry) {
+    _entryCache.set('today', entry.text) // guardamos en memoria, no en HTML
     const t = new Date(entry.saved_at)
     wrap.innerHTML = `
       <div class="posit posit-written">
-        <button class="edit-btn" onclick="editEntry('${entry.text.replace(/'/g,"\\'")}')">editar</button>
-        <div class="written-note">${entry.text.replace(/</g,'&lt;')}</div>
+        <button class="edit-btn" id="editBtn">editar</button>
+        <div class="written-note">${entry.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
         <div class="written-time">Guardado a las ${t.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>
       </div>`
+    document.getElementById('editBtn').addEventListener('click', editEntry)
     btn.textContent = '✓ Pósit de hoy guardado'
     btn.disabled = true
   } else {
+    _entryCache.delete('today')
     wrap.innerHTML = `
       <div class="posit">
         <textarea id="entry" maxlength="280" placeholder="¿Qué tal hoy?"></textarea>
@@ -371,11 +395,9 @@ async function saveEntry() {
   if (!ta) return
   const text = ta.value.trim()
   if (!text) { ta.focus(); return }
-
   const btn = document.getElementById('saveBtn')
   btn.disabled = true
   btn.textContent = 'Guardando...'
-
   const ok = await DB.saveEntry(todayKey(), text)
   if (!ok) {
     btn.disabled = false
@@ -383,7 +405,6 @@ async function saveEntry() {
     showToast('Error al guardar. Inténtalo de nuevo.')
     return
   }
-
   const entries = await DB.getAllEntries()
   const { current } = calcStreak(entries)
   document.getElementById('streakNum').textContent = current
@@ -391,20 +412,24 @@ async function saveEntry() {
   await renderHoy()
 }
 
-function editEntry(currentText) {
+// FIX: lee el texto desde _entryCache, no desde el DOM/atributo
+function editEntry() {
+  const currentText = _entryCache.get('today') || ''
   const wrap = document.getElementById('positWrap')
   const btn = document.getElementById('saveBtn')
   wrap.innerHTML = `
     <div class="posit">
-      <textarea id="entry" maxlength="280">${currentText}</textarea>
+      <textarea id="entry" maxlength="280"></textarea>
       <span class="char-count" id="charCount">${280 - currentText.length}</span>
     </div>`
-  btn.textContent = 'Guardar pósit'
-  btn.disabled = false
   const ta = document.getElementById('entry')
+  ta.value = currentText // asignar por .value, nunca por innerHTML
   const cc = document.getElementById('charCount')
   ta.addEventListener('input', () => { cc.textContent = 280 - ta.value.length })
+  btn.textContent = 'Guardar pósit'
+  btn.disabled = false
   ta.focus()
+  ta.setSelectionRange(ta.value.length, ta.value.length)
 }
 
 // ─────────────────────────────────────────────
@@ -416,7 +441,6 @@ async function renderHistorial() {
   document.getElementById('statTotal').textContent = entries.length
   document.getElementById('statStreak').textContent = current
   document.getElementById('statBest').textContent = best
-
   const list = document.getElementById('historyList')
   if (!entries.length) {
     list.innerHTML = '<div class="empty-memories">Tu historial aparecerá aquí.</div>'
@@ -425,7 +449,7 @@ async function renderHistorial() {
   list.innerHTML = entries.map(e => `
     <div class="history-item">
       <div class="history-date-col">${formatDateShort(e.date)}</div>
-      <div class="history-text">${e.text.replace(/</g,'&lt;')}</div>
+      <div class="history-text">${e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
     </div>`).join('')
 }
 
@@ -436,7 +460,6 @@ async function renderRecuerdos() {
   const key = todayKey()
   const memories = await DB.getMemories(key)
   const grid = document.getElementById('memoriesGrid')
-
   if (!memories.length) {
     const all = await DB.getAllEntries()
     if (all.length < 7) {
@@ -449,19 +472,18 @@ async function renderRecuerdos() {
         all.slice(0,3).map(e => `
           <div class="memory-card">
             <div class="memory-year">${formatDateShort(e.date)}</div>
-            <div class="memory-text">${e.text.replace(/</g,'&lt;')}</div>
+            <div class="memory-text">${e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
           </div>`).join('')
     }
     return
   }
-
   const thisYear = parseInt(key.split('-')[0])
   grid.innerHTML = '<p class="section-title">Tal día como hoy</p>' +
     memories.map(e => {
       const diff = thisYear - parseInt(e.date.split('-')[0])
       return `<div class="memory-card">
         <div class="memory-year">Hace ${diff} año${diff!==1?'s':''} — ${e.date.split('-')[0]}</div>
-        <div class="memory-text">${e.text.replace(/</g,'&lt;')}</div>
+        <div class="memory-text">${e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
       </div>`
     }).join('')
 }
@@ -480,33 +502,36 @@ function switchTab(name) {
 }
 
 // ─────────────────────────────────────────────
-// INIT — detecta sesión al cargar
+// INIT
+// FIX: detecta el hash del magic link en la URL y deja que
+// onAuthStateChange lo procese antes de decidir qué pantalla mostrar
 // ─────────────────────────────────────────────
+async function initApp(session) {
+  showScreen('app')
+  await renderHoy()
+  const entries = await DB.getAllEntries()
+  const { current } = calcStreak(entries)
+  document.getElementById('streakNum').textContent = current
+}
+
 async function init() {
-  const { data: { session } } = await sb.auth.getSession()
-
-  if (session) {
-    showScreen('app')
-    await renderHoy()
-    const entries = await DB.getAllEntries()
-    const { current } = calcStreak(entries)
-    document.getElementById('streakNum').textContent = current
-  } else {
-    showScreen('auth')
-  }
-
-  // Escucha cambios de sesión (incluye el magic link redirect)
+  // Supabase detecta automáticamente el token en el hash de la URL
+  // onAuthStateChange se dispara con SIGNED_IN si hay token válido
   sb.auth.onAuthStateChange(async (event, session) => {
     if (session) {
-      showScreen('app')
-      await renderHoy()
-      const entries = await DB.getAllEntries()
-      const { current } = calcStreak(entries)
-      document.getElementById('streakNum').textContent = current
+      await initApp(session)
     } else {
       showScreen('auth')
     }
   })
+
+  // Comprueba sesión existente (usuario que ya había entrado antes)
+  const { data: { session } } = await sb.auth.getSession()
+  if (session) {
+    await initApp(session)
+  }
+  // Si no hay sesión y no hay hash de magic link, muestra auth
+  // onAuthStateChange se encarga del resto
 }
 
 init()
