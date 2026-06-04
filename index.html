@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-visual-viewport">
 <title>Recuérdate</title>
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -18,8 +18,19 @@
   --post-it-shadow:#d4c84a;
   --accent:#c8411b;
   --streak:#e07b20;
+  --cork:#c8a96e;
+  --cork-dark:#b89058;
+  --cork-fiber:#a07840;
 }
-body{background:var(--paper);font-family:'Lora',Georgia,serif;color:var(--ink);min-height:100vh;position:relative;overflow-x:hidden}
+body{
+  background:var(--paper);
+  font-family:'Lora',Georgia,serif;
+  color:var(--ink);
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+  padding-bottom:env(safe-area-inset-bottom,0);
+}
 body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(transparent,transparent 31px,#d4c5a930 32px);pointer-events:none;z-index:0}
 
 .screen{display:none;position:relative;z-index:1}
@@ -35,9 +46,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .auth-privacy a:hover{color:var(--accent)}
 .auth-card{background:var(--paper-dark);border:1px solid #c4b49040;border-radius:4px;padding:2rem}
 .auth-label{font-family:'Special Elite',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);display:block;text-align:left;margin-bottom:8px}
-.auth-input{width:100%;background:var(--paper);border:1px solid #c4b49060;border-radius:3px;padding:12px 14px;font-family:'Lora',serif;font-size:1rem;color:var(--ink);outline:none;transition:border-color 0.2s}
+.auth-input{width:100%;background:var(--paper);border:1px solid #c4b49060;border-radius:3px;padding:12px 14px;font-family:'Lora',serif;font-size:16px;color:var(--ink);outline:none;transition:border-color 0.2s;-webkit-text-size-adjust:100%}
 .auth-input:focus{border-color:var(--accent)}
-.auth-btn{display:block;width:100%;margin-top:1rem;background:var(--ink);color:var(--paper);border:none;border-radius:3px;padding:13px;font-family:'Special Elite',monospace;font-size:0.85rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.15s}
+.auth-btn{display:block;width:100%;margin-top:1rem;background:var(--ink);color:var(--paper);border:none;border-radius:3px;padding:13px;font-family:'Special Elite',monospace;font-size:0.85rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.15s;min-height:52px}
 .auth-btn:hover{background:#1a1208}
 .auth-btn:disabled{background:var(--ink-faint);cursor:default}
 .auth-msg{margin-top:1rem;font-size:0.85rem;color:var(--ink-light);font-style:italic;min-height:1.4rem;line-height:1.4}
@@ -48,37 +59,76 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .auth-sent-sub{font-size:0.85rem;color:var(--ink-light);font-style:italic;line-height:1.6}
 
 /* ── APP ── */
-.app{max-width:640px;margin:0 auto;padding:2rem 1.5rem 4rem}
+.app{max-width:640px;margin:0 auto;padding:2rem 1.5rem calc(4rem + env(keyboard-inset-height,0px))}
 header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2.5rem}
 .logo{font-family:'Special Elite',monospace;font-size:1.6rem;color:var(--ink);letter-spacing:-0.5px}
 .logo span{color:var(--accent)}
 .header-right{display:flex;gap:10px;align-items:flex-start}
-.streak-badge{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--paper-dark);border:1px solid #c4b49050;border-radius:8px;padding:8px 14px;cursor:default}
-.streak-num{font-family:'Special Elite',monospace;font-size:1.4rem;color:var(--streak);line-height:1}
+
+/* ── STREAK BADGE con gamificación ── */
+.streak-badge{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--paper-dark);border:1px solid #c4b49050;border-radius:8px;padding:8px 14px;cursor:default;transition:background 0.4s,border-color 0.4s}
+.streak-num{font-family:'Special Elite',monospace;font-size:1.4rem;color:var(--streak);line-height:1;transition:color 0.4s}
 .streak-label{font-size:0.65rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:1.5px}
-.logout-btn{background:none;border:1px solid #c4b49050;border-radius:8px;padding:8px 12px;font-family:'Special Elite',monospace;font-size:0.65rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:1px;cursor:pointer;transition:all 0.2s}
+
+.streak-badge.s-3  {background:#fff8e0;border-color:#e8d84a60}
+.streak-badge.s-3  .streak-num{color:#c8941b}
+.streak-badge.s-7  {background:#fff0cc;border-color:#e07b2080}
+.streak-badge.s-7  .streak-num{color:#c06010}
+.streak-badge.s-14 {background:#ffe8d0;border-color:#c8411b90}
+.streak-badge.s-14 .streak-num{color:#c8411b}
+.streak-badge.s-30 {background:#2c2416;border-color:#2c2416}
+.streak-badge.s-30 .streak-num{color:#f6e96b}
+.streak-badge.s-30 .streak-label{color:#b5a48a}
+
+.logout-btn{background:none;border:1px solid #c4b49050;border-radius:8px;padding:8px 12px;font-family:'Special Elite',monospace;font-size:0.65rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:1px;cursor:pointer;transition:all 0.2s;min-height:44px}
 .logout-btn:hover{color:var(--accent);border-color:var(--accent)}
 .date-line{font-family:'Special Elite',monospace;font-size:0.8rem;color:var(--ink-light);letter-spacing:1px;margin-bottom:1.5rem;text-transform:uppercase}
+
+/* ── PÓSIT con gamificación ── */
 .posit-wrap{position:relative;margin-bottom:2rem}
-.posit{background:var(--post-it);border-radius:2px;padding:1.5rem 1.5rem 2rem;position:relative;box-shadow:3px 3px 0 var(--post-it-shadow),6px 6px 12px #0000001a;transform:rotate(-0.4deg);min-height:160px}
-.posit::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#e8d84a,#f0e060,#e8d84a);border-radius:2px 2px 0 0}
+.posit{background:var(--post-it);border-radius:2px;padding:1.5rem 1.5rem 2rem;position:relative;box-shadow:3px 3px 0 var(--post-it-shadow),6px 6px 12px #0000001a;transform:rotate(-0.4deg);min-height:160px;transition:background 0.5s,box-shadow 0.5s}
+.posit::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#e8d84a,#f0e060,#e8d84a);border-radius:2px 2px 0 0;transition:background 0.5s}
 .posit-written{box-shadow:2px 2px 0 var(--post-it-shadow),4px 4px 8px #00000015}
-textarea{width:100%;background:transparent;border:none;outline:none;resize:none;font-family:'Special Elite',monospace;font-size:1rem;color:var(--ink);line-height:1.7;min-height:120px;caret-color:var(--accent)}
+
+/* Racha 3+ */
+.posit.streak-3{background:#fff3a0;box-shadow:3px 3px 0 #d4b830,6px 6px 12px #0000001a}
+.posit.streak-3::before{background:linear-gradient(90deg,#d4b830,#e8d040,#d4b830)}
+/* Racha 7+ */
+.posit.streak-7{background:#ffe680;box-shadow:3px 3px 0 #c89010,6px 6px 14px #e07b2025}
+.posit.streak-7::before{background:linear-gradient(90deg,#c89010,#e0a820,#c89010)}
+/* Racha 14+ */
+.posit.streak-14{background:#ffd060;box-shadow:3px 3px 0 #b86800,6px 6px 16px #c8411b30}
+.posit.streak-14::before{background:linear-gradient(90deg,#b86800,#d08010,#b86800)}
+/* Racha 30+ — pósit oscuro, tinta invertida */
+.posit.streak-30{background:#2c2416;box-shadow:3px 3px 0 #1a1208,6px 6px 18px #c8411b40}
+.posit.streak-30::before{background:linear-gradient(90deg,#c8411b,#e05030,#c8411b)}
+.posit.streak-30 textarea,.posit.streak-30 .written-note{color:#faf6ef}
+.posit.streak-30 textarea::placeholder{color:#b5a48a80}
+.posit.streak-30 .char-count{color:#b5a48a80}
+.posit.streak-30 .written-time{color:#b5a48a90}
+.posit.streak-30 .edit-btn{color:#b5a48a}
+
+textarea{width:100%;background:transparent;border:none;outline:none;resize:none;font-family:'Special Elite',monospace;font-size:16px;color:var(--ink);line-height:1.7;min-height:120px;caret-color:var(--accent);-webkit-text-size-adjust:100%}
 textarea::placeholder{color:#b8a45a80}
 .char-count{position:absolute;bottom:10px;right:14px;font-family:'Special Elite',monospace;font-size:0.7rem;color:#b8a45a80}
-.btn-save{display:block;width:100%;background:var(--ink);color:var(--paper);border:none;border-radius:3px;padding:14px;font-family:'Special Elite',monospace;font-size:1rem;letter-spacing:1.5px;cursor:pointer;transition:background 0.15s,transform 0.1s;text-transform:uppercase}
+.btn-save{display:block;width:100%;background:var(--ink);color:var(--paper);border:none;border-radius:3px;padding:14px;font-family:'Special Elite',monospace;font-size:1rem;letter-spacing:1.5px;cursor:pointer;transition:background 0.15s,transform 0.1s;text-transform:uppercase;min-height:52px}
 .btn-save:hover{background:#1a1208}
 .btn-save:active{transform:scale(0.99)}
 .btn-save:disabled{background:var(--ink-faint);cursor:default}
 .written-note{font-family:'Special Elite',monospace;font-size:1rem;color:var(--ink);line-height:1.7;white-space:pre-wrap}
 .written-time{font-size:0.7rem;color:#b8a45a90;margin-top:0.75rem;font-family:'Special Elite',monospace}
-.edit-btn{position:absolute;top:12px;right:14px;font-family:'Special Elite',monospace;font-size:0.65rem;color:#b8a45a;background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:1px;opacity:0.6;transition:opacity 0.2s}
+.edit-btn{position:absolute;top:12px;right:14px;font-family:'Special Elite',monospace;font-size:0.65rem;color:#b8a45a;background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:1px;opacity:0.6;transition:opacity 0.2s;min-height:44px;padding:8px 4px}
 .edit-btn:hover{opacity:1}
-.nav-tabs{display:flex;gap:0;margin-bottom:2rem;border-bottom:1px solid #c4b49030}
-.nav-tab{font-family:'Special Elite',monospace;font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);background:none;border:none;padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.2s,border-color 0.2s}
+
+/* ── NAV ── */
+.nav-tabs{display:flex;gap:0;margin-bottom:2rem;border-bottom:1px solid #c4b49030;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{font-family:'Special Elite',monospace;font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);background:none;border:none;padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.2s,border-color 0.2s;white-space:nowrap;min-height:44px}
 .nav-tab.active{color:var(--ink);border-bottom-color:var(--accent)}
 .tab-content{display:none}
 .tab-content.active{display:block}
+
+/* ── HISTORIAL ── */
 .stats-row{display:flex;gap:1rem;margin-bottom:2rem}
 .stat-box{flex:1;background:var(--paper-dark);border:1px solid #c4b49025;border-radius:3px;padding:1rem;text-align:center}
 .stat-num{font-family:'Special Elite',monospace;font-size:1.6rem;color:var(--ink);display:block}
@@ -87,16 +137,159 @@ textarea::placeholder{color:#b8a45a80}
 .history-item{display:flex;gap:1rem;align-items:flex-start;padding:0.75rem 0;border-bottom:1px solid #c4b49020}
 .history-date-col{font-family:'Special Elite',monospace;font-size:0.7rem;color:var(--ink-faint);min-width:64px;padding-top:2px;text-align:right;letter-spacing:0.5px}
 .history-text{font-size:0.9rem;color:var(--ink-light);line-height:1.55;font-style:italic;flex:1}
-.memories-grid{display:flex;flex-direction:column;gap:1rem}
-.memory-card{background:var(--paper-dark);border:1px solid #c4b49030;border-radius:3px;padding:1rem 1.25rem;border-left:3px solid var(--accent)}
-.memory-year{font-family:'Special Elite',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
-.memory-text{font-size:0.95rem;color:var(--ink-light);line-height:1.6;font-style:italic}
+
+/* ── TABLÓN ── */
+.tablon-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+.tablon-nav-btn{background:none;border:1px solid #c4b49050;border-radius:3px;padding:8px 14px;font-family:'Special Elite',monospace;font-size:0.75rem;color:var(--ink-light);cursor:pointer;transition:all 0.2s;min-height:44px;min-width:44px}
+.tablon-nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tablon-nav-btn:disabled{opacity:0.3;cursor:default}
+.tablon-mes{font-family:'Special Elite',monospace;font-size:0.9rem;color:var(--ink);letter-spacing:1px;text-transform:uppercase}
+
+/* Banner de recuerdos del mes */
+.tablon-banner{background:linear-gradient(90deg,#fff8e0,#fffbf0);border:1px solid #e8d84a60;border-left:3px solid var(--accent);border-radius:3px;padding:10px 14px;margin-bottom:1.5rem;font-family:'Special Elite',monospace;font-size:0.75rem;color:var(--ink-light);letter-spacing:0.5px;display:none}
+.tablon-banner.visible{display:block}
+
+/* El tablón propiamente */
+.cork-board{
+  background:var(--cork);
+  border-radius:6px;
+  padding:1.25rem 1rem;
+  position:relative;
+  /* textura corcho con múltiples sombras radiales */
+  background-image:
+    radial-gradient(ellipse 3px 3px at 12% 18%, rgba(255,255,255,0.15) 0%, transparent 100%),
+    radial-gradient(ellipse 4px 3px at 37% 42%, rgba(0,0,0,0.08) 0%, transparent 100%),
+    radial-gradient(ellipse 3px 5px at 62% 15%, rgba(255,255,255,0.12) 0%, transparent 100%),
+    radial-gradient(ellipse 5px 3px at 83% 67%, rgba(0,0,0,0.07) 0%, transparent 100%),
+    radial-gradient(ellipse 3px 4px at 24% 78%, rgba(255,255,255,0.1) 0%, transparent 100%),
+    radial-gradient(ellipse 4px 4px at 71% 90%, rgba(0,0,0,0.06) 0%, transparent 100%),
+    radial-gradient(ellipse 6px 3px at 50% 55%, rgba(160,120,64,0.3) 0%, transparent 100%);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,0.2),0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Cabecera de días de semana */
+.cork-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px}
+.cork-wd{font-family:'Special Elite',monospace;font-size:0.6rem;color:rgba(44,36,22,0.5);text-align:center;text-transform:uppercase;letter-spacing:0.5px;padding:2px 0}
+
+/* Grid de días */
+.cork-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cork-cell{aspect-ratio:1;position:relative;cursor:default}
+.cork-cell.has-day{cursor:pointer}
+
+/* El pósit dentro del tablón */
+.cork-posit{
+  position:absolute;
+  inset:0;
+  border-radius:2px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  font-family:'Special Elite',monospace;
+  font-size:0.75rem;
+  color:rgba(44,36,22,0.6);
+  background:var(--cork-dark);
+  transition:transform 0.15s;
+  /* Pin del corcho */
+}
+.cork-posit.empty{
+  background:rgba(160,120,64,0.35);
+  color:rgba(44,36,22,0.25);
+  cursor:default;
+}
+.cork-posit.written{
+  background:var(--post-it);
+  color:var(--ink);
+  box-shadow:1px 1px 0 var(--post-it-shadow),2px 2px 4px rgba(0,0,0,0.2);
+  transform:rotate(-0.5deg);
+}
+.cork-posit.written:active{transform:rotate(-0.5deg) scale(0.95)}
+/* Pin */
+.cork-posit.written::after{
+  content:'';
+  position:absolute;
+  top:-4px;
+  left:50%;
+  transform:translateX(-50%);
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 1px 2px rgba(0,0,0,0.4);
+  z-index:2;
+}
+/* Indicador de recuerdo */
+.cork-posit.has-memory::before{
+  content:'';
+  position:absolute;
+  bottom:3px;
+  right:3px;
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--accent);
+  opacity:0.9;
+  z-index:3;
+}
+.cork-posit.written.today{
+  background:#fff8c0;
+  box-shadow:1px 1px 0 #d4c840,2px 2px 6px rgba(200,65,27,0.25);
+}
+.cork-day-num{font-size:0.7rem;line-height:1}
+.cork-posit.empty .cork-day-num{opacity:0.4}
+
+/* Espaciador inicial del mes */
+.cork-spacer{background:transparent;pointer-events:none}
+
+/* ── POPUP PÓSIT ── */
+.popup-overlay{
+  position:fixed;inset:0;
+  background:rgba(44,36,22,0.6);
+  z-index:200;
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.25s;
+  padding-bottom:env(safe-area-inset-bottom,0);
+}
+.popup-overlay.open{opacity:1;pointer-events:all}
+.popup-sheet{
+  background:var(--paper);
+  border-radius:12px 12px 0 0;
+  width:100%;max-width:640px;
+  padding:1.5rem 1.5rem 2rem;
+  transform:translateY(40px);
+  transition:transform 0.3s cubic-bezier(.34,1.2,.64,1);
+  max-height:85vh;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.popup-overlay.open .popup-sheet{transform:translateY(0)}
+.popup-handle{width:36px;height:4px;background:#c4b49060;border-radius:2px;margin:0 auto 1.25rem}
+.popup-date{font-family:'Special Elite',monospace;font-size:0.75rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:1rem}
+.popup-posit{
+  background:var(--post-it);
+  border-radius:2px;
+  padding:1.25rem;
+  margin-bottom:1.5rem;
+  box-shadow:2px 2px 0 var(--post-it-shadow),4px 4px 8px rgba(0,0,0,0.12);
+  transform:rotate(-0.3deg);
+}
+.popup-text{font-family:'Special Elite',monospace;font-size:0.95rem;color:var(--ink);line-height:1.7;white-space:pre-wrap}
+.popup-memories{margin-top:1rem}
+.popup-mem-title{font-family:'Special Elite',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--ink-faint);margin-bottom:0.75rem}
+.popup-mem-card{background:var(--paper-dark);border:1px solid #c4b49030;border-radius:3px;padding:0.75rem 1rem;border-left:3px solid var(--accent);margin-bottom:0.75rem}
+.popup-mem-year{font-family:'Special Elite',monospace;font-size:0.65rem;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.popup-mem-text{font-size:0.88rem;color:var(--ink-light);line-height:1.6;font-style:italic}
+.popup-close{display:block;width:100%;margin-top:1rem;background:none;border:1px solid #c4b49060;border-radius:3px;padding:11px;font-family:'Special Elite',monospace;font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);cursor:pointer;transition:all 0.2s;min-height:44px}
+.popup-close:hover{border-color:var(--ink);color:var(--ink)}
+
+/* ── MISC ── */
 .empty-memories{text-align:center;padding:2rem;color:var(--ink-faint);font-style:italic;font-size:0.9rem;line-height:1.8}
 .section-title{font-family:'Special Elite',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--ink-faint);margin-bottom:1.2rem}
-.milestone-toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(100px);background:var(--ink);color:var(--paper);padding:12px 24px;border-radius:3px;font-family:'Special Elite',monospace;font-size:0.85rem;letter-spacing:1px;transition:transform 0.4s cubic-bezier(.34,1.56,.64,1);z-index:100;white-space:nowrap}
+.milestone-toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(100px);background:var(--ink);color:var(--paper);padding:12px 24px;border-radius:3px;font-family:'Special Elite',monospace;font-size:0.85rem;letter-spacing:1px;transition:transform 0.4s cubic-bezier(.34,1.56,.64,1);z-index:300;white-space:nowrap}
 .milestone-toast.show{transform:translateX(-50%) translateY(0)}
 .loading-line{text-align:center;padding:3rem;font-family:'Special Elite',monospace;font-size:0.8rem;color:var(--ink-faint);letter-spacing:2px;text-transform:uppercase}
-.export-btn{display:block;width:100%;margin-top:1.5rem;background:none;border:1px solid #c4b49060;border-radius:3px;padding:11px;font-family:'Special Elite',monospace;font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);cursor:pointer;transition:all 0.2s}
+.export-btn{display:block;width:100%;margin-top:1.5rem;background:none;border:1px solid #c4b49060;border-radius:3px;padding:11px;font-family:'Special Elite',monospace;font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);cursor:pointer;transition:all 0.2s;min-height:44px}
 .export-btn:hover{border-color:var(--ink);color:var(--ink)}
 .app-footer{text-align:center;margin-top:3rem;padding-top:1.5rem;border-top:1px solid #c4b49020}
 .app-footer a{font-family:'Special Elite',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);text-decoration:none;transition:color 0.2s}
@@ -128,7 +321,7 @@ textarea::placeholder{color:#b8a45a80}
     <header>
       <div class="logo">Recuér<span>date</span></div>
       <div class="header-right">
-        <div class="streak-badge">
+        <div class="streak-badge" id="streakBadge">
           <span class="streak-num" id="streakNum">0</span>
           <span class="streak-label">días seguidos</span>
         </div>
@@ -139,7 +332,7 @@ textarea::placeholder{color:#b8a45a80}
     <nav class="nav-tabs">
       <button class="nav-tab active" onclick="switchTab('hoy')">Hoy</button>
       <button class="nav-tab" onclick="switchTab('historial')">Historial</button>
-      <button class="nav-tab" onclick="switchTab('recuerdos')">Recuerdos</button>
+      <button class="nav-tab" onclick="switchTab('tablon')">Tablón</button>
     </nav>
 
     <div class="tab-content active" id="tab-hoy">
@@ -158,13 +351,39 @@ textarea::placeholder{color:#b8a45a80}
       <button class="export-btn" onclick="exportData()">↓ Exportar mis recuerdos (.json)</button>
     </div>
 
-    <div class="tab-content" id="tab-recuerdos">
-      <div class="memories-grid" id="memoriesGrid"><div class="loading-line">Cargando...</div></div>
+    <div class="tab-content" id="tab-tablon">
+      <div class="tablon-nav">
+        <button class="tablon-nav-btn" id="tablonPrev" onclick="tablonChangeMonth(-1)">←</button>
+        <span class="tablon-mes" id="tablonMesLabel"></span>
+        <button class="tablon-nav-btn" id="tablonNext" onclick="tablonChangeMonth(1)">→</button>
+      </div>
+      <div class="tablon-banner" id="tablonBanner"></div>
+      <div class="cork-board">
+        <div class="cork-weekdays">
+          <div class="cork-wd">L</div><div class="cork-wd">M</div><div class="cork-wd">X</div>
+          <div class="cork-wd">J</div><div class="cork-wd">V</div><div class="cork-wd">S</div>
+          <div class="cork-wd">D</div>
+        </div>
+        <div class="cork-grid" id="corkGrid"></div>
+      </div>
     </div>
 
     <footer class="app-footer">
       <a href="/privacidad">Privacidad</a>
     </footer>
+  </div>
+</div>
+
+<!-- POPUP -->
+<div class="popup-overlay" id="popupOverlay" onclick="closePopup(event)">
+  <div class="popup-sheet" id="popupSheet">
+    <div class="popup-handle"></div>
+    <div class="popup-date" id="popupDate"></div>
+    <div class="popup-posit">
+      <div class="popup-text" id="popupText"></div>
+    </div>
+    <div class="popup-memories" id="popupMemories"></div>
+    <button class="popup-close" onclick="closePopupDirect()">Cerrar</button>
   </div>
 </div>
 
@@ -200,15 +419,32 @@ const DB = {
     if (error) { console.error('getAllEntries:', error); return [] }
     return data || []
   },
-  async getMemories(todayKey) {
-    const [year, mm, dd] = todayKey.split('-')
+  async getEntriesForMonth(year, month) {
+    const from = `${year}-${String(month).padStart(2,'0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const to = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`
     const { data, error } = await sb
       .from('entries').select('*')
-      .neq('date', todayKey)
+      .gte('date', from).lte('date', to)
+    if (error) { console.error('getEntriesForMonth:', error); return [] }
+    return data || []
+  },
+  async getMemoriesForDay(mm, dd, currentYear) {
+    const { data, error } = await sb
+      .from('entries').select('*')
       .filter('date', 'like', `%-${mm}-${dd}`)
       .order('date', { ascending: false })
-    if (error) { console.error('getMemories:', error); return [] }
-    return (data || []).filter(e => e.date.split('-')[0] < year)
+    if (error) { console.error('getMemoriesForDay:', error); return [] }
+    return (data || []).filter(e => parseInt(e.date.split('-')[0]) < currentYear)
+  },
+  async getMemoriesForMonth(year, month) {
+    const mm = String(month).padStart(2,'0')
+    const { data, error } = await sb
+      .from('entries').select('date')
+      .filter('date', 'like', `%-${mm}-%`)
+      .lt('date', `${year}-01-01`)
+    if (error) { return [] }
+    return data || []
   }
 }
 
@@ -219,69 +455,83 @@ function todayKey() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
-
 function parseDate(dateKey) {
-  const [y, m, d] = dateKey.split('-').map(Number)
-  return new Date(y, m - 1, d)
+  const [y,m,d] = dateKey.split('-').map(Number)
+  return new Date(y, m-1, d)
 }
-
 function formatDate(dateKey) {
-  return parseDate(dateKey).toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+  return parseDate(dateKey).toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'})
 }
-
 function formatDateShort(dateKey) {
-  return parseDate(dateKey).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' })
+  return parseDate(dateKey).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})
 }
-
 function calcStreak(entries) {
-  if (!entries.length) return { current: 0, best: 0 }
-  const keys = entries.map(e => e.date).sort((a, b) => b.localeCompare(a))
+  if (!entries.length) return { current:0, best:0 }
+  const keys = entries.map(e => e.date).sort((a,b) => b.localeCompare(a))
   const today = todayKey()
   const offsetKey = (fromKey, days) => {
-    const d = parseDate(fromKey)
-    d.setDate(d.getDate() + days)
+    const d = parseDate(fromKey); d.setDate(d.getDate()+days)
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   }
-  const yesterday = offsetKey(today, -1)
+  const yesterday = offsetKey(today,-1)
   let current = 0
-  if (keys[0] === today || keys[0] === yesterday) {
+  if (keys[0]===today || keys[0]===yesterday) {
     const anchor = keys[0]
-    for (let i = 0; i < keys.length; i++) {
-      if (keys[i] === offsetKey(anchor, -i)) current++
+    for (let i=0;i<keys.length;i++) {
+      if (keys[i]===offsetKey(anchor,-i)) current++
       else break
     }
   }
-  let best = 1, run = 1
-  for (let i = 1; i < keys.length; i++) {
-    const diff = (parseDate(keys[i-1]) - parseDate(keys[i])) / 864e5
-    if (Math.round(diff) === 1) { run++; if (run > best) best = run }
-    else run = 1
+  let best=1, run=1
+  for (let i=1;i<keys.length;i++) {
+    const diff = (parseDate(keys[i-1])-parseDate(keys[i]))/864e5
+    if (Math.round(diff)===1){run++;if(run>best)best=run}
+    else run=1
   }
-  return { current, best: Math.max(current, best) }
+  return {current, best:Math.max(current,best)}
 }
-
+function streakClass(n) {
+  if (n>=30) return 's-30'
+  if (n>=14) return 's-14'
+  if (n>=7)  return 's-7'
+  if (n>=3)  return 's-3'
+  return ''
+}
+function positStreakClass(n) {
+  if (n>=30) return 'streak-30'
+  if (n>=14) return 'streak-14'
+  if (n>=7)  return 'streak-7'
+  if (n>=3)  return 'streak-3'
+  return ''
+}
+function applyStreakUI(n) {
+  const badge = document.getElementById('streakBadge')
+  badge.className = 'streak-badge'
+  const cls = streakClass(n)
+  if (cls) badge.classList.add(cls)
+  document.getElementById('streakNum').textContent = n
+}
 function showToast(msg) {
   const t = document.getElementById('toast')
   t.textContent = msg
   t.classList.add('show')
   setTimeout(() => t.classList.remove('show'), 3500)
 }
-
 function checkMilestone(streak) {
-  const m = { 7:'7 días seguidos. Ya es un hábito.', 30:'Un mes completo. Eres constancia.', 100:'100 días. Leyenda.', 365:'Un año. Ya tienes recuerdos reales.' }
+  const m = {7:'7 días seguidos. Ya es un hábito.',30:'Un mes completo. Eres constancia.',100:'100 días. Leyenda.',365:'Un año. Ya tienes recuerdos reales.'}
   if (m[streak]) showToast(m[streak])
 }
-
+function esc(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+}
 async function exportData() {
   const entries = await DB.getAllEntries()
   if (!entries.length) { showToast('No hay nada que exportar todavía.'); return }
-  const clean = entries.map(e => ({ fecha: e.date, texto: e.text, guardado: e.saved_at }))
-  const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' })
+  const clean = entries.map(e => ({fecha:e.date,texto:e.text,guardado:e.saved_at}))
+  const blob = new Blob([JSON.stringify(clean,null,2)],{type:'application/json'})
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url
-  a.download = `recuerdate-export-${todayKey()}.json`
-  a.click()
+  a.href=url; a.download=`recuerdate-export-${todayKey()}.json`; a.click()
   URL.revokeObjectURL(url)
 }
 
@@ -292,37 +542,25 @@ async function sendMagicLink() {
   const email = document.getElementById('emailInput').value.trim()
   const msg = document.getElementById('authMsg')
   const btn = document.getElementById('authSubmitBtn')
-  if (!email || !email.includes('@')) {
-    msg.textContent = 'Escribe un correo válido.'
-    msg.classList.add('error')
-    return
+  if (!email||!email.includes('@')) {
+    msg.textContent='Escribe un correo válido.'; msg.classList.add('error'); return
   }
-  btn.disabled = true
-  btn.textContent = 'Enviando...'
-  msg.textContent = ''
-  msg.classList.remove('error')
-  const { error } = await sb.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: true, emailRedirectTo: 'https://recuerdate.app' }
+  btn.disabled=true; btn.textContent='Enviando...'; msg.textContent=''; msg.classList.remove('error')
+  const {error} = await sb.auth.signInWithOtp({
+    email, options:{shouldCreateUser:true, emailRedirectTo:'https://recuerdate.app'}
   })
   if (error) {
-    msg.textContent = 'Error al enviar. Inténtalo de nuevo.'
-    msg.classList.add('error')
-    btn.disabled = false
-    btn.textContent = 'Entrar con magic link'
-    return
+    msg.textContent='Error al enviar. Inténtalo de nuevo.'; msg.classList.add('error')
+    btn.disabled=false; btn.textContent='Entrar con magic link'; return
   }
   document.getElementById('auth-form-wrap').innerHTML = `
     <div class="auth-sent">
       <div class="auth-sent-icon">✉️</div>
       <div class="auth-sent-title">Revisa tu correo</div>
-      <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${email}</strong><br><br>Haz clic en él para entrar.</div>
+      <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${esc(email)}</strong><br><br>Haz clic en él para entrar.</div>
     </div>`
 }
-
 async function logout() {
-  // FIX: desactivamos el listener antes de hacer signOut
-  // para evitar que onAuthStateChange reactive initApp
   _appReady = false
   await sb.auth.signOut()
   showScreen('auth')
@@ -332,16 +570,16 @@ async function logout() {
     <button class="auth-btn" id="authSubmitBtn" onclick="sendMagicLink()">Entrar con magic link</button>
     <div class="auth-msg" id="authMsg"></div>`
 }
-
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
-  document.getElementById('screen-' + name).classList.add('active')
+  document.getElementById('screen-'+name).classList.add('active')
 }
 
 // ─────────────────────────────────────────────
 // RENDER HOY
 // ─────────────────────────────────────────────
 const _entryCache = new Map()
+let _currentStreak = 0
 
 async function renderHoy() {
   const key = todayKey()
@@ -349,13 +587,14 @@ async function renderHoy() {
   const entry = await DB.getEntry(key)
   const wrap = document.getElementById('positWrap')
   const btn = document.getElementById('saveBtn')
+  const streakCls = positStreakClass(_currentStreak)
   if (entry) {
     _entryCache.set('today', entry.text)
     const t = new Date(entry.saved_at)
     wrap.innerHTML = `
-      <div class="posit posit-written">
+      <div class="posit posit-written ${streakCls}">
         <button class="edit-btn" id="editBtn">editar</button>
-        <div class="written-note">${entry.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+        <div class="written-note">${esc(entry.text)}</div>
         <div class="written-time">Guardado a las ${t.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>
       </div>`
     document.getElementById('editBtn').addEventListener('click', editEntry)
@@ -364,7 +603,7 @@ async function renderHoy() {
   } else {
     _entryCache.delete('today')
     wrap.innerHTML = `
-      <div class="posit">
+      <div class="posit ${streakCls}">
         <textarea id="entry" maxlength="280" placeholder="¿Qué tal hoy?"></textarea>
         <span class="char-count" id="charCount">280</span>
       </div>`
@@ -372,50 +611,44 @@ async function renderHoy() {
     btn.disabled = false
     const ta = document.getElementById('entry')
     const cc = document.getElementById('charCount')
-    ta.addEventListener('input', () => { cc.textContent = 280 - ta.value.length })
+    ta.addEventListener('input', () => { cc.textContent = 280-ta.value.length })
     ta.focus()
   }
 }
-
 async function saveEntry() {
   const ta = document.getElementById('entry')
   if (!ta) return
   const text = ta.value.trim()
   if (!text) { ta.focus(); return }
   const btn = document.getElementById('saveBtn')
-  btn.disabled = true
-  btn.textContent = 'Guardando...'
+  btn.disabled=true; btn.textContent='Guardando...'
   const ok = await DB.saveEntry(todayKey(), text)
   if (!ok) {
-    btn.disabled = false
-    btn.textContent = 'Guardar pósit'
-    showToast('Error al guardar. Inténtalo de nuevo.')
-    return
+    btn.disabled=false; btn.textContent='Guardar pósit'
+    showToast('Error al guardar. Inténtalo de nuevo.'); return
   }
   const entries = await DB.getAllEntries()
-  const { current } = calcStreak(entries)
-  document.getElementById('streakNum').textContent = current
+  const {current} = calcStreak(entries)
+  _currentStreak = current
+  applyStreakUI(current)
   checkMilestone(current)
   await renderHoy()
 }
-
 function editEntry() {
   const currentText = _entryCache.get('today') || ''
   const wrap = document.getElementById('positWrap')
   const btn = document.getElementById('saveBtn')
+  const streakCls = positStreakClass(_currentStreak)
   wrap.innerHTML = `
-    <div class="posit">
+    <div class="posit ${streakCls}">
       <textarea id="entry" maxlength="280"></textarea>
-      <span class="char-count" id="charCount">${280 - currentText.length}</span>
+      <span class="char-count" id="charCount">${280-currentText.length}</span>
     </div>`
   const ta = document.getElementById('entry')
   ta.value = currentText
-  const cc = document.getElementById('charCount')
-  ta.addEventListener('input', () => { cc.textContent = 280 - ta.value.length })
-  btn.textContent = 'Guardar pósit'
-  btn.disabled = false
-  ta.focus()
-  ta.setSelectionRange(ta.value.length, ta.value.length)
+  ta.addEventListener('input', () => { document.getElementById('charCount').textContent = 280-ta.value.length })
+  btn.textContent='Guardar pósit'; btn.disabled=false
+  ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length)
 }
 
 // ─────────────────────────────────────────────
@@ -423,55 +656,161 @@ function editEntry() {
 // ─────────────────────────────────────────────
 async function renderHistorial() {
   const entries = await DB.getAllEntries()
-  const { current, best } = calcStreak(entries)
+  const {current, best} = calcStreak(entries)
   document.getElementById('statTotal').textContent = entries.length
   document.getElementById('statStreak').textContent = current
   document.getElementById('statBest').textContent = best
   const list = document.getElementById('historyList')
-  if (!entries.length) {
-    list.innerHTML = '<div class="empty-memories">Tu historial aparecerá aquí.</div>'
-    return
-  }
+  if (!entries.length) { list.innerHTML='<div class="empty-memories">Tu historial aparecerá aquí.</div>'; return }
   list.innerHTML = entries.map(e => `
     <div class="history-item">
       <div class="history-date-col">${formatDateShort(e.date)}</div>
-      <div class="history-text">${e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+      <div class="history-text">${esc(e.text)}</div>
     </div>`).join('')
 }
 
 // ─────────────────────────────────────────────
-// RENDER RECUERDOS
+// TABLÓN
 // ─────────────────────────────────────────────
-async function renderRecuerdos() {
-  const key = todayKey()
-  const memories = await DB.getMemories(key)
-  const grid = document.getElementById('memoriesGrid')
-  if (!memories.length) {
-    const all = await DB.getAllEntries()
-    if (all.length < 7) {
-      grid.innerHTML = `<div class="empty-memories">
-        Los recuerdos aparecen cuando llevas un año escribiendo.<br><br>
-        <span style="font-size:0.8rem">Con ${all.length} pósit${all.length!==1?'s':''} escritos, vas bien. Sigue.</span>
+const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+let _tablonYear, _tablonMonth
+let _tablonEntries = {}   // dateKey -> entry obj
+let _tablonMemoryDays = new Set()  // días (1-31) que tienen recuerdo de años anteriores
+
+async function renderTablon() {
+  const grid = document.getElementById('corkGrid')
+  const label = document.getElementById('tablonMesLabel')
+  const banner = document.getElementById('tablonBanner')
+  const prevBtn = document.getElementById('tablonPrev')
+  const nextBtn = document.getElementById('tablonNext')
+
+  label.textContent = `${MONTHS_ES[_tablonMonth-1]} ${_tablonYear}`
+
+  // Bloquear navegación al futuro
+  const now = new Date()
+  const isCurrentMonth = (_tablonYear === now.getFullYear() && _tablonMonth === now.getMonth()+1)
+  nextBtn.disabled = isCurrentMonth
+
+  // Cargar entradas del mes
+  const entries = await DB.getEntriesForMonth(_tablonYear, _tablonMonth)
+  _tablonEntries = {}
+  entries.forEach(e => { _tablonEntries[e.date] = e })
+
+  // Cargar días con recuerdos de años anteriores
+  const memEntries = await DB.getMemoriesForMonth(_tablonYear, _tablonMonth)
+  _tablonMemoryDays = new Set()
+  memEntries.forEach(e => {
+    const day = parseInt(e.date.split('-')[2])
+    _tablonMemoryDays.add(day)
+  })
+
+  // Banner
+  if (_tablonMemoryDays.size > 0) {
+    const dias = Array.from(_tablonMemoryDays).sort((a,b)=>a-b)
+    banner.textContent = `Tienes recuerdos de años anteriores en ${_tablonMemoryDays.size} día${_tablonMemoryDays.size!==1?'s':''} de este mes — los días ${dias.join(', ')}.`
+    banner.classList.add('visible')
+  } else {
+    banner.classList.remove('visible')
+  }
+
+  // Primer día de semana (lunes=0)
+  const firstDay = new Date(_tablonYear, _tablonMonth-1, 1)
+  let startOffset = firstDay.getDay() - 1
+  if (startOffset < 0) startOffset = 6
+
+  const daysInMonth = new Date(_tablonYear, _tablonMonth, 0).getDate()
+  const todayK = todayKey()
+
+  let html = ''
+  // Espaciadores iniciales
+  for (let i=0; i<startOffset; i++) {
+    html += `<div class="cork-cell cork-spacer"></div>`
+  }
+
+  for (let d=1; d<=daysInMonth; d++) {
+    const mm = String(_tablonMonth).padStart(2,'0')
+    const dd = String(d).padStart(2,'0')
+    const key = `${_tablonYear}-${mm}-${dd}`
+    const hasEntry = !!_tablonEntries[key]
+    const isToday = key === todayK
+    const hasMemory = _tablonMemoryDays.has(d)
+
+    // No mostrar días futuros del mes actual
+    const isFuture = isCurrentMonth && d > now.getDate()
+
+    if (isFuture) {
+      html += `<div class="cork-cell"><div class="cork-posit empty"><span class="cork-day-num"></span></div></div>`
+    } else if (hasEntry) {
+      const memCls = hasMemory ? 'has-memory' : ''
+      const todayCls = isToday ? 'today' : ''
+      html += `<div class="cork-cell has-day" onclick="openPopup('${key}')">
+        <div class="cork-posit written ${memCls} ${todayCls}">
+          <span class="cork-day-num">${d}</span>
+        </div>
       </div>`
     } else {
-      grid.innerHTML = '<p class="section-title">Mientras tanto, hace unos días</p>' +
-        all.slice(0,3).map(e => `
-          <div class="memory-card">
-            <div class="memory-year">${formatDateShort(e.date)}</div>
-            <div class="memory-text">${e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
-          </div>`).join('')
-    }
-    return
-  }
-  const thisYear = parseInt(key.split('-')[0])
-  grid.innerHTML = '<p class="section-title">Tal día como hoy</p>' +
-    memories.map(e => {
-      const diff = thisYear - parseInt(e.date.split('-')[0])
-      return `<div class="memory-card">
-        <div class="memory-year">Hace ${diff} año${diff!==1?'s':''} — ${e.date.split('-')[0]}</div>
-        <div class="memory-text">${e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+      html += `<div class="cork-cell has-day" onclick="openPopup('${key}', true)">
+        <div class="cork-posit empty ${hasMemory?'has-memory':''}">
+          <span class="cork-day-num">${d}</span>
+        </div>
       </div>`
-    }).join('')
+    }
+  }
+
+  grid.innerHTML = html
+}
+
+function tablonChangeMonth(delta) {
+  _tablonMonth += delta
+  if (_tablonMonth > 12) { _tablonMonth = 1; _tablonYear++ }
+  if (_tablonMonth < 1)  { _tablonMonth = 12; _tablonYear-- }
+  renderTablon()
+}
+
+// ─────────────────────────────────────────────
+// POPUP
+// ─────────────────────────────────────────────
+async function openPopup(dateKey, emptyDay = false) {
+  const overlay = document.getElementById('popupOverlay')
+  const dateEl = document.getElementById('popupDate')
+  const textEl = document.getElementById('popupText')
+  const memoriesEl = document.getElementById('popupMemories')
+
+  dateEl.textContent = formatDate(dateKey).replace(/^\w/, c => c.toUpperCase())
+
+  const entry = _tablonEntries[dateKey]
+  if (entry) {
+    textEl.textContent = entry.text
+  } else {
+    textEl.innerHTML = `<span style="opacity:0.4;font-style:italic">No escribiste este día.</span>`
+  }
+
+  // Cargar recuerdos
+  const [year, mm, dd] = dateKey.split('-')
+  memoriesEl.innerHTML = ''
+  const memories = await DB.getMemoriesForDay(mm, dd, parseInt(year))
+  if (memories.length) {
+    const diff0 = parseInt(year) - parseInt(memories[0].date.split('-')[0])
+    memoriesEl.innerHTML = `<div class="popup-mem-title">Tal día como hoy</div>` +
+      memories.map(m => {
+        const diff = parseInt(year) - parseInt(m.date.split('-')[0])
+        return `<div class="popup-mem-card">
+          <div class="popup-mem-year">Hace ${diff} año${diff!==1?'s':''} — ${m.date.split('-')[0]}</div>
+          <div class="popup-mem-text">${esc(m.text)}</div>
+        </div>`
+      }).join('')
+  }
+
+  overlay.classList.add('open')
+  document.body.style.overflow = 'hidden'
+}
+
+function closePopup(e) {
+  if (e.target === document.getElementById('popupOverlay')) closePopupDirect()
+}
+function closePopupDirect() {
+  document.getElementById('popupOverlay').classList.remove('open')
+  document.body.style.overflow = ''
 }
 
 // ─────────────────────────────────────────────
@@ -479,12 +818,12 @@ async function renderRecuerdos() {
 // ─────────────────────────────────────────────
 function switchTab(name) {
   document.querySelectorAll('.nav-tab').forEach((t,i) => {
-    t.classList.toggle('active', ['hoy','historial','recuerdos'][i] === name)
+    t.classList.toggle('active', ['hoy','historial','tablon'][i]===name)
   })
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
-  document.getElementById('tab-' + name).classList.add('active')
-  if (name === 'historial') renderHistorial()
-  if (name === 'recuerdos') renderRecuerdos()
+  document.getElementById('tab-'+name).classList.add('active')
+  if (name==='historial') renderHistorial()
+  if (name==='tablon') renderTablon()
 }
 
 // ─────────────────────────────────────────────
@@ -496,24 +835,28 @@ async function initApp() {
   if (_appReady) return
   _appReady = true
   showScreen('app')
-  await renderHoy()
+
+  // Inicializar mes del tablón al mes actual
+  const now = new Date()
+  _tablonYear = now.getFullYear()
+  _tablonMonth = now.getMonth()+1
+
   const entries = await DB.getAllEntries()
-  const { current } = calcStreak(entries)
-  document.getElementById('streakNum').textContent = current
+  const {current} = calcStreak(entries)
+  _currentStreak = current
+  applyStreakUI(current)
+
+  await renderHoy()
 }
 
 async function init() {
-  // Sesión existente tiene prioridad
-  const { data: { session } } = await sb.auth.getSession()
-  if (session) {
-    await initApp()
-  }
+  const {data:{session}} = await sb.auth.getSession()
+  if (session) await initApp()
 
-  // Listener solo para eventos nuevos
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && !_appReady) {
+    if (event==='SIGNED_IN' && !_appReady) {
       await initApp()
-    } else if (event === 'SIGNED_OUT') {
+    } else if (event==='SIGNED_OUT') {
       _appReady = false
       showScreen('auth')
       document.getElementById('auth-form-wrap').innerHTML = `
