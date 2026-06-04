@@ -29,7 +29,10 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .auth-wrap{max-width:420px;margin:0 auto;padding:4rem 1.5rem 3rem;text-align:center}
 .auth-logo{font-family:'Special Elite',monospace;font-size:2.2rem;color:var(--ink);margin-bottom:0.4rem}
 .auth-logo span{color:var(--accent)}
-.auth-sub{font-size:0.9rem;color:var(--ink-faint);font-style:italic;margin-bottom:3rem;line-height:1.6}
+.auth-sub{font-size:0.9rem;color:var(--ink-faint);font-style:italic;margin-bottom:2rem;line-height:1.6}
+.auth-privacy{margin-bottom:2rem}
+.auth-privacy a{font-family:'Special Elite',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);text-decoration:none;transition:color 0.2s}
+.auth-privacy a:hover{color:var(--accent)}
 .auth-card{background:var(--paper-dark);border:1px solid #c4b49040;border-radius:4px;padding:2rem}
 .auth-label{font-family:'Special Elite',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);display:block;text-align:left;margin-bottom:8px}
 .auth-input{width:100%;background:var(--paper);border:1px solid #c4b49060;border-radius:3px;padding:12px 14px;font-family:'Lora',serif;font-size:1rem;color:var(--ink);outline:none;transition:border-color 0.2s}
@@ -95,6 +98,9 @@ textarea::placeholder{color:#b8a45a80}
 .loading-line{text-align:center;padding:3rem;font-family:'Special Elite',monospace;font-size:0.8rem;color:var(--ink-faint);letter-spacing:2px;text-transform:uppercase}
 .export-btn{display:block;width:100%;margin-top:1.5rem;background:none;border:1px solid #c4b49060;border-radius:3px;padding:11px;font-family:'Special Elite',monospace;font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);cursor:pointer;transition:all 0.2s}
 .export-btn:hover{border-color:var(--ink);color:var(--ink)}
+.app-footer{text-align:center;margin-top:3rem;padding-top:1.5rem;border-top:1px solid #c4b49020}
+.app-footer a{font-family:'Special Elite',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);text-decoration:none;transition:color 0.2s}
+.app-footer a:hover{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -104,9 +110,7 @@ textarea::placeholder{color:#b8a45a80}
   <div class="auth-wrap">
     <div class="auth-logo">Recuér<span>date</span></div>
     <div class="auth-sub">Un pósit al día.<br>Tus recuerdos, para siempre.</div>
-<div style="margin-top:-2rem;margin-bottom:3rem">
-  <a href="/privacidad" style="font-family:'Special Elite',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);text-decoration:none">Privacidad</a>
-</div>
+    <div class="auth-privacy"><a href="/privacidad">Privacidad</a></div>
     <div class="auth-card">
       <div id="auth-form-wrap">
         <label class="auth-label" for="emailInput">Tu correo</label>
@@ -157,21 +161,22 @@ textarea::placeholder{color:#b8a45a80}
     <div class="tab-content" id="tab-recuerdos">
       <div class="memories-grid" id="memoriesGrid"><div class="loading-line">Cargando...</div></div>
     </div>
+
+    <footer class="app-footer">
+      <a href="/privacidad">Privacidad</a>
+    </footer>
   </div>
 </div>
 
 <div class="milestone-toast" id="toast"></div>
 
 <script>
-// ─────────────────────────────────────────────
-// CONFIG
-// ─────────────────────────────────────────────
 const SUPABASE_URL = 'https://rxaxdcuitsvwsrwgalig.supabase.co'
 const SUPABASE_KEY = 'sb_publishable_2uh8VlzNxhWW-UqpRjygdw_vcjDIY6l'
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 
 // ─────────────────────────────────────────────
-// DB LAYER — swappable por cualquier backend
+// DB LAYER
 // ─────────────────────────────────────────────
 const DB = {
   async getEntry(dateKey) {
@@ -180,7 +185,6 @@ const DB = {
     if (error) { console.error('getEntry:', error); return null }
     return data
   },
-
   async saveEntry(dateKey, text) {
     const { data: { user } } = await sb.auth.getUser()
     const { error } = await sb.from('entries').upsert(
@@ -190,14 +194,12 @@ const DB = {
     if (error) { console.error('saveEntry:', error); return false }
     return true
   },
-
   async getAllEntries() {
     const { data, error } = await sb
       .from('entries').select('*').order('date', { ascending: false })
     if (error) { console.error('getAllEntries:', error); return [] }
     return data || []
   },
-
   async getMemories(todayKey) {
     const [year, mm, dd] = todayKey.split('-')
     const { data, error } = await sb
@@ -212,7 +214,6 @@ const DB = {
 
 // ─────────────────────────────────────────────
 // UTILS
-// FIX: fechas con destructuring para evitar bugs de timezone
 // ─────────────────────────────────────────────
 function todayKey() {
   const d = new Date()
@@ -221,7 +222,7 @@ function todayKey() {
 
 function parseDate(dateKey) {
   const [y, m, d] = dateKey.split('-').map(Number)
-  return new Date(y, m - 1, d) // local time, sin UTC bugs
+  return new Date(y, m - 1, d)
 }
 
 function formatDate(dateKey) {
@@ -232,21 +233,16 @@ function formatDateShort(dateKey) {
   return parseDate(dateKey).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' })
 }
 
-// FIX: calcStreak reescrito sin replace(/-/g,'/') y con manejo correcto de timezone
 function calcStreak(entries) {
   if (!entries.length) return { current: 0, best: 0 }
   const keys = entries.map(e => e.date).sort((a, b) => b.localeCompare(a))
   const today = todayKey()
-
   const offsetKey = (fromKey, days) => {
     const d = parseDate(fromKey)
     d.setDate(d.getDate() + days)
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   }
-
   const yesterday = offsetKey(today, -1)
-
-  // Racha actual
   let current = 0
   if (keys[0] === today || keys[0] === yesterday) {
     const anchor = keys[0]
@@ -255,15 +251,12 @@ function calcStreak(entries) {
       else break
     }
   }
-
-  // Mejor racha histórica
   let best = 1, run = 1
   for (let i = 1; i < keys.length; i++) {
     const diff = (parseDate(keys[i-1]) - parseDate(keys[i])) / 864e5
     if (Math.round(diff) === 1) { run++; if (run > best) best = run }
     else run = 1
   }
-
   return { current, best: Math.max(current, best) }
 }
 
@@ -279,9 +272,6 @@ function checkMilestone(streak) {
   if (m[streak]) showToast(m[streak])
 }
 
-// ─────────────────────────────────────────────
-// EXPORT — añadido como sugirió el análisis
-// ─────────────────────────────────────────────
 async function exportData() {
   const entries = await DB.getAllEntries()
   if (!entries.length) { showToast('No hay nada que exportar todavía.'); return }
@@ -311,15 +301,10 @@ async function sendMagicLink() {
   btn.textContent = 'Enviando...'
   msg.textContent = ''
   msg.classList.remove('error')
-
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: 'https://recuerdate.app'
-    }
+    options: { shouldCreateUser: true, emailRedirectTo: 'https://recuerdate.app' }
   })
-
   if (error) {
     msg.textContent = 'Error al enviar. Inténtalo de nuevo.'
     msg.classList.add('error')
@@ -327,7 +312,6 @@ async function sendMagicLink() {
     btn.textContent = 'Entrar con magic link'
     return
   }
-
   document.getElementById('auth-form-wrap').innerHTML = `
     <div class="auth-sent">
       <div class="auth-sent-icon">✉️</div>
@@ -337,6 +321,9 @@ async function sendMagicLink() {
 }
 
 async function logout() {
+  // FIX: desactivamos el listener antes de hacer signOut
+  // para evitar que onAuthStateChange reactive initApp
+  _appReady = false
   await sb.auth.signOut()
   showScreen('auth')
   document.getElementById('auth-form-wrap').innerHTML = `
@@ -353,8 +340,6 @@ function showScreen(name) {
 
 // ─────────────────────────────────────────────
 // RENDER HOY
-// FIX: editEntry ya no pasa texto por atributo HTML
-// Usa un Map en memoria para evitar bugs con comillas y saltos de línea
 // ─────────────────────────────────────────────
 const _entryCache = new Map()
 
@@ -364,9 +349,8 @@ async function renderHoy() {
   const entry = await DB.getEntry(key)
   const wrap = document.getElementById('positWrap')
   const btn = document.getElementById('saveBtn')
-
   if (entry) {
-    _entryCache.set('today', entry.text) // guardamos en memoria, no en HTML
+    _entryCache.set('today', entry.text)
     const t = new Date(entry.saved_at)
     wrap.innerHTML = `
       <div class="posit posit-written">
@@ -415,7 +399,6 @@ async function saveEntry() {
   await renderHoy()
 }
 
-// FIX: lee el texto desde _entryCache, no desde el DOM/atributo
 function editEntry() {
   const currentText = _entryCache.get('today') || ''
   const wrap = document.getElementById('positWrap')
@@ -426,7 +409,7 @@ function editEntry() {
       <span class="char-count" id="charCount">${280 - currentText.length}</span>
     </div>`
   const ta = document.getElementById('entry')
-  ta.value = currentText // asignar por .value, nunca por innerHTML
+  ta.value = currentText
   const cc = document.getElementById('charCount')
   ta.addEventListener('input', () => { cc.textContent = 280 - ta.value.length })
   btn.textContent = 'Guardar pósit'
@@ -506,10 +489,14 @@ function switchTab(name) {
 
 // ─────────────────────────────────────────────
 // INIT
-// FIX: detecta el hash del magic link en la URL y deja que
-// onAuthStateChange lo procese antes de decidir qué pantalla mostrar
+// FIX: flag _appReady evita doble ejecución de initApp
+// cuando onAuthStateChange y getSession se disparan juntos
 // ─────────────────────────────────────────────
-async function initApp(session) {
+let _appReady = false
+
+async function initApp() {
+  if (_appReady) return  // evita doble render
+  _appReady = true
   showScreen('app')
   await renderHoy()
   const entries = await DB.getAllEntries()
@@ -518,23 +505,20 @@ async function initApp(session) {
 }
 
 async function init() {
-  // Supabase detecta automáticamente el token en el hash de la URL
-  // onAuthStateChange se dispara con SIGNED_IN si hay token válido
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (session) {
-      await initApp(session)
-    } else {
+    if (event === 'SIGNED_IN' && session) {
+      await initApp()
+    } else if (event === 'SIGNED_OUT') {
+      _appReady = false
       showScreen('auth')
     }
   })
 
-  // Comprueba sesión existente (usuario que ya había entrado antes)
+  // Sesión existente al cargar (usuario que ya había entrado)
   const { data: { session } } = await sb.auth.getSession()
   if (session) {
-    await initApp(session)
+    await initApp()
   }
-  // Si no hay sesión y no hay hash de magic link, muestra auth
-  // onAuthStateChange se encarga del resto
 }
 
 init()
