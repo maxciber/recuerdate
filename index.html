@@ -291,6 +291,22 @@ textarea::placeholder{color:#b8a45a80}
 .loading-line{text-align:center;padding:3rem;font-family:'Special Elite',monospace;font-size:0.8rem;color:var(--ink-faint);letter-spacing:2px;text-transform:uppercase}
 .export-btn{display:block;width:100%;margin-top:1.5rem;background:none;border:1px solid #c4b49060;border-radius:3px;padding:11px;font-family:'Special Elite',monospace;font-size:0.75rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-faint);cursor:pointer;transition:all 0.2s;min-height:44px}
 .export-btn:hover{border-color:var(--ink);color:var(--ink)}
+/* ── MOOD PICKER ── */
+.mood-wrap{margin-top:1.25rem;padding:1rem 1.25rem;background:var(--paper-dark);border-radius:3px;border:1px solid #c4b49030}
+.mood-question{font-family:'Special Elite',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);margin-bottom:0.75rem;display:flex;justify-content:space-between;align-items:center}
+.mood-skip{background:none;border:none;font-family:'Special Elite',monospace;font-size:0.65rem;color:var(--ink-faint);cursor:pointer;text-transform:uppercase;letter-spacing:1px;opacity:0.6;transition:opacity 0.2s;padding:4px}
+.mood-skip:hover{opacity:1}
+.mood-options{display:flex;gap:10px;justify-content:center}
+.mood-btn{background:none;border:1px solid #c4b49040;border-radius:6px;width:44px;height:44px;font-size:1.3rem;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center}
+.mood-btn:hover{background:var(--paper);border-color:#c4b49090;transform:scale(1.12)}
+.mood-btn.selected{background:var(--paper);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+/* Sello en pósit guardado */
+.posit-stamp{position:absolute;bottom:10px;left:14px;font-size:1.1rem;line-height:1;opacity:0.85}
+/* Sello en popup */
+.popup-stamp{font-size:1.4rem;margin-bottom:0.5rem;display:block}
+/* Sello en tarjeta de recuerdo */
+.popup-mem-stamp{font-size:1rem;margin-left:6px;vertical-align:middle}
+
 .app-footer{text-align:center;margin-top:3rem;padding-top:1.5rem;border-top:1px solid #c4b49020}
 .app-footer a{font-family:'Special Elite',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);text-decoration:none;transition:color 0.2s}
 .app-footer a:hover{color:var(--accent)}
@@ -437,6 +453,13 @@ const DB = {
     if (error) { console.error('getMemoriesForDay:', error); return [] }
     return (data || []).filter(e => parseInt(e.date.split('-')[0]) < currentYear)
   },
+  async saveMood(dateKey, mood) {
+    const { data: { user } } = await sb.auth.getUser()
+    const { error } = await sb.from('entries').update({ mood })
+      .eq('user_id', user.id).eq('date', dateKey)
+    if (error) { console.error('saveMood:', error); return false }
+    return true
+  },
   async getMemoriesForMonth(year, month) {
     const mm = String(month).padStart(2,'0')
     const lastDay = new Date(year, month, 0).getDate()
@@ -525,6 +548,8 @@ function checkMilestone(streak) {
 function esc(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;')
 }
+const MOODS = ['🌞','🌧','😤','🥱','💪','🌀']
+
 async function exportData() {
   const entries = await DB.getAllEntries()
   if (!entries.length) { showToast('No hay nada que exportar todavía.'); return }
@@ -591,14 +616,19 @@ async function renderHoy() {
   const streakCls = positStreakClass(_currentStreak)
   if (entry) {
     _entryCache.set('today', entry.text)
+    _entryCache.set('todayMood', entry.mood || null)
     const t = new Date(entry.saved_at)
+    const stampHtml = entry.mood ? `<span class="posit-stamp">${entry.mood}</span>` : ''
     wrap.innerHTML = `
       <div class="posit posit-written ${streakCls}">
         <button class="edit-btn" id="editBtn">editar</button>
         <div class="written-note">${esc(entry.text)}</div>
         <div class="written-time">Guardado a las ${t.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>
+        ${stampHtml}
       </div>`
     document.getElementById('editBtn').addEventListener('click', editEntry)
+    // Mostrar picker solo si aún no tiene sello
+    if (!entry.mood) renderMoodPicker(key)
     btn.textContent = '✓ Pósit de hoy guardado'
     btn.disabled = true
   } else {
@@ -634,6 +664,34 @@ async function saveEntry() {
   applyStreakUI(current)
   checkMilestone(current)
   await renderHoy()
+  // mood picker se muestra desde renderHoy si no tiene mood
+}
+function renderMoodPicker(dateKey) {
+  const existing = document.getElementById('moodWrap')
+  if (existing) return
+  const wrap = document.createElement('div')
+  wrap.id = 'moodWrap'
+  wrap.className = 'mood-wrap'
+  wrap.innerHTML = `
+    <div class="mood-question">
+      ¿Cómo fue el día?
+      <button class="mood-skip" onclick="document.getElementById('moodWrap').remove()">saltar</button>
+    </div>
+    <div class="mood-options">
+      ${MOODS.map(m => `<button class="mood-btn" onclick="selectMood('${dateKey}','${m}',this)">${m}</button>`).join('')}
+    </div>`
+  document.getElementById('positWrap').after(wrap)
+}
+async function selectMood(dateKey, mood, btn) {
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'))
+  btn.classList.add('selected')
+  await DB.saveMood(dateKey, mood)
+  // Actualizar el pósit con el sello y quitar picker
+  setTimeout(async () => {
+    const wrap = document.getElementById('moodWrap')
+    if (wrap) wrap.remove()
+    await renderHoy()
+  }, 400)
 }
 function editEntry() {
   const currentText = _entryCache.get('today') || ''
@@ -781,7 +839,8 @@ async function openPopup(dateKey, emptyDay = false) {
 
   const entry = _tablonEntries[dateKey]
   if (entry) {
-    textEl.textContent = entry.text
+    const stampHtml = entry.mood ? `<span class="popup-stamp">${entry.mood}</span>` : ''
+    textEl.innerHTML = stampHtml + esc(entry.text)
   } else {
     textEl.innerHTML = `<span style="opacity:0.4;font-style:italic">No escribiste este día.</span>`
   }
@@ -795,8 +854,9 @@ async function openPopup(dateKey, emptyDay = false) {
     memoriesEl.innerHTML = `<div class="popup-mem-title">Tal día como hoy</div>` +
       memories.map(m => {
         const diff = parseInt(year) - parseInt(m.date.split('-')[0])
+        const memStamp = m.mood ? `<span class="popup-mem-stamp">${m.mood}</span>` : ''
         return `<div class="popup-mem-card">
-          <div class="popup-mem-year">Hace ${diff} año${diff!==1?'s':''} — ${m.date.split('-')[0]}</div>
+          <div class="popup-mem-year">Hace ${diff} año${diff!==1?'s':''} — ${m.date.split('-')[0]}${memStamp}</div>
           <div class="popup-mem-text">${esc(m.text)}</div>
         </div>`
       }).join('')
