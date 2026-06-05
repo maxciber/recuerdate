@@ -439,10 +439,11 @@ const DB = {
   },
   async getMemoriesForMonth(year, month) {
     const mm = String(month).padStart(2,'0')
+    const lastDay = new Date(year, month, 0).getDate()
     const { data, error } = await sb
       .from('entries').select('date')
-      .filter('date', 'like', `%-${mm}-%`)
-      .lt('date', `${year}-01-01`)
+      .gte('date', `0000-${mm}-01`)
+      .lte('date', `${year-1}-${mm}-${String(lastDay).padStart(2,'0')}`)
     if (error) { return [] }
     return data || []
   }
