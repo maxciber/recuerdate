@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-visual-viewport">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
 <title>Recuérdate</title>
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -583,7 +584,7 @@ async function sendMagicLink() {
     <div class="auth-sent">
       <div class="auth-sent-icon">✉️</div>
       <div class="auth-sent-title">Revisa tu correo</div>
-      <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${esc(email)}</strong><br><br>Haz clic en él para entrar.</div>
+      <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${esc(email)}</strong><br><br>Haz clic en él para entrar.<br><br><span style="font-size:0.8rem;opacity:0.7">¿No lo ves? Revisa la carpeta de spam.</span></div>
     </div>`
 }
 async function logout() {
@@ -865,7 +866,6 @@ async function openPopup(dateKey, emptyDay = false) {
   memoriesEl.innerHTML = ''
   const memories = await DB.getMemoriesForDay(mm, dd, parseInt(year))
   if (memories.length) {
-    const diff0 = parseInt(year) - parseInt(memories[0].date.split('-')[0])
     memoriesEl.innerHTML = `<div class="popup-mem-title">Tal día como hoy</div>` +
       memories.map(m => {
         const diff = parseInt(year) - parseInt(m.date.split('-')[0])
