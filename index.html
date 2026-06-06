@@ -115,9 +115,9 @@ textarea::placeholder{color:#b8a45a80}
 .btn-save:hover{background:#1a1208}
 .btn-save:active{transform:scale(0.99)}
 .btn-save:disabled{background:var(--ink-faint);cursor:default}
-.written-note{font-family:'Special Elite',monospace;font-size:1rem;color:var(--ink);line-height:1.7;white-space:pre-wrap}
+.written-note{font-family:'Special Elite',monospace;font-size:1rem;color:var(--ink);line-height:1.7;white-space:pre-wrap;position:relative;z-index:1}
 .written-time{font-size:0.7rem;color:#b8a45a90;margin-top:0.75rem;font-family:'Special Elite',monospace}
-.edit-btn{position:absolute;top:12px;right:14px;font-family:'Special Elite',monospace;font-size:0.65rem;color:#b8a45a;background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:1px;opacity:0.6;transition:opacity 0.2s;min-height:44px;padding:8px 4px}
+.edit-btn{position:absolute;top:12px;right:14px;font-family:'Special Elite',monospace;font-size:0.65rem;color:#b8a45a;background:var(--post-it);border:none;cursor:pointer;text-transform:uppercase;letter-spacing:1px;opacity:0.6;transition:opacity 0.2s;min-height:44px;padding:8px 6px;z-index:2;border-radius:2px}
 .edit-btn:hover{opacity:1}
 
 /* ── NAV ── */
@@ -301,7 +301,7 @@ textarea::placeholder{color:#b8a45a80}
 .mood-btn:hover{background:var(--paper);border-color:#c4b49090;transform:scale(1.12)}
 .mood-btn.selected{background:var(--paper);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 /* Sello en pósit guardado */
-.posit-stamp{position:absolute;bottom:10px;left:14px;font-size:1.1rem;line-height:1;opacity:0.85}
+.posit-stamp{position:absolute;bottom:10px;right:14px;font-size:1.1rem;line-height:1;opacity:0.8;z-index:0;transform-origin:center}
 /* Sello en popup */
 .popup-stamp{font-size:1.4rem;margin-bottom:0.5rem;display:block}
 /* Sello en tarjeta de recuerdo */
@@ -695,9 +695,11 @@ async function selectMood(dateKey, mood, btn) {
 }
 function editEntry() {
   const currentText = _entryCache.get('today') || ''
+  const currentMood = _entryCache.get('todayMood') || null
   const wrap = document.getElementById('positWrap')
   const btn = document.getElementById('saveBtn')
   const streakCls = positStreakClass(_currentStreak)
+  const key = todayKey()
   wrap.innerHTML = `
     <div class="posit ${streakCls}">
       <textarea id="entry" maxlength="280"></textarea>
@@ -708,6 +710,19 @@ function editEntry() {
   ta.addEventListener('input', () => { document.getElementById('charCount').textContent = 280-ta.value.length })
   btn.textContent='Guardar pósit'; btn.disabled=false
   ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length)
+  // Mostrar picker de sello en modo edición (siempre, para poder cambiarlo)
+  const moodWrap = document.createElement('div')
+  moodWrap.id = 'moodWrap'
+  moodWrap.className = 'mood-wrap'
+  moodWrap.innerHTML = `
+    <div class="mood-question">
+      ${currentMood ? 'Cambiar sello' : '¿Cómo fue el día?'}
+      <button class="mood-skip" onclick="document.getElementById('moodWrap').remove()">saltar</button>
+    </div>
+    <div class="mood-options">
+      ${MOODS.map(m => `<button class="mood-btn${m===currentMood?' selected':''}" onclick="selectMood('${key}','${m}',this)">${m}</button>`).join('')}
+    </div>`
+  wrap.after(moodWrap)
 }
 
 // ─────────────────────────────────────────────
