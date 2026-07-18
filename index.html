@@ -59,6 +59,17 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .auth-sent-title{font-family:'Special Elite',monospace;font-size:1.1rem;color:var(--ink);margin-bottom:0.5rem}
 .auth-sent-sub{font-size:0.85rem;color:var(--ink-light);font-style:italic;line-height:1.6}
 
+/* ── OTP (código alternativo al magic link) ── */
+.otp-toggle{display:block;margin:1.5rem auto 0;background:none;border:none;font-family:'Special Elite',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--ink-faint);cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color 0.2s;padding:8px}
+.otp-toggle:hover{color:var(--accent)}
+.otp-wrap{margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid #c4b49040;text-align:left}
+.otp-label{font-family:'Special Elite',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);display:block;margin-bottom:8px;text-align:left}
+.otp-input{width:100%;background:var(--paper);border:1px solid #c4b49060;border-radius:3px;padding:12px 14px;font-family:'Special Elite',monospace;font-size:20px;letter-spacing:8px;text-align:center;color:var(--ink);outline:none;transition:border-color 0.2s;-webkit-text-size-adjust:100%}
+.otp-input:focus{border-color:var(--accent)}
+.otp-verify-btn{display:block;width:100%;margin-top:0.75rem;background:var(--ink);color:var(--paper);border:none;border-radius:3px;padding:12px;font-family:'Special Elite',monospace;font-size:0.8rem;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:background 0.15s;min-height:48px}
+.otp-verify-btn:hover{background:#1a1208}
+.otp-verify-btn:disabled{background:var(--ink-faint);cursor:default}
+
 /* ── APP ── */
 .app{max-width:640px;margin:0 auto;padding:2rem 1.5rem calc(4rem + env(keyboard-inset-height,0px))}
 header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2.5rem}
@@ -92,8 +103,8 @@ header{display:flex;justify-content:space-between;align-items:flex-start;margin-
 .posit-written{box-shadow:2px 2px 0 var(--post-it-shadow),4px 4px 8px #00000015}
 
 /* Racha 3+ */
-.posit.streak-3{background:#fff3a0;box-shadow:3px 3px 0 #d4b830,6px 6px 12px #0000001a}
-.posit.streak-3::before{background:linear-gradient(90deg,#d4b830,#e8d040,#d4b830)}
+.posit.streak-3{background:#ffe066;box-shadow:3px 3px 0 #d4a800,6px 6px 12px #0000001a}
+.posit.streak-3::before{background:linear-gradient(90deg,#d4a800,#e8bc10,#d4a800)}
 /* Racha 7+ */
 .posit.streak-7{background:#ffe680;box-shadow:3px 3px 0 #c89010,6px 6px 14px #e07b2025}
 .posit.streak-7::before{background:linear-gradient(90deg,#c89010,#e0a820,#c89010)}
@@ -585,8 +596,46 @@ async function sendMagicLink() {
       <div class="auth-sent-icon">✉️</div>
       <div class="auth-sent-title">Revisa tu correo</div>
       <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${esc(email)}</strong><br><br>Haz clic en él para entrar.<br><br><span style="font-size:0.8rem;opacity:0.7">¿No lo ves? Revisa la carpeta de spam.</span></div>
+      <button class="otp-toggle" id="otpToggleBtn" onclick="showOtpInput('${esc(email)}')">¿Prefieres introducir el código?</button>
     </div>`
 }
+
+function showOtpInput(email) {
+  const toggleBtn = document.getElementById('otpToggleBtn')
+  if (toggleBtn) toggleBtn.remove()
+  const sentBlock = document.querySelector('.auth-sent')
+  const otpBlock = document.createElement('div')
+  otpBlock.className = 'otp-wrap'
+  otpBlock.innerHTML = `
+    <label class="otp-label" for="otpInput">Código de 6 dígitos</label>
+    <input class="otp-input" type="text" id="otpInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="······" autocomplete="one-time-code">
+    <button class="otp-verify-btn" id="otpVerifyBtn" onclick="verifyOtp('${esc(email)}')">Verificar código</button>
+    <div class="auth-msg" id="otpMsg"></div>`
+  sentBlock.appendChild(otpBlock)
+  document.getElementById('otpInput').focus()
+  document.getElementById('otpInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') verifyOtp(email)
+  })
+}
+
+async function verifyOtp(email) {
+  const input = document.getElementById('otpInput')
+  const msg = document.getElementById('otpMsg')
+  const btn = document.getElementById('otpVerifyBtn')
+  const token = input.value.trim()
+  if (!token || token.length < 6) {
+    msg.textContent = 'Introduce el código de 6 dígitos.'; msg.classList.add('error'); return
+  }
+  btn.disabled = true; btn.textContent = 'Verificando...'; msg.textContent=''; msg.classList.remove('error')
+  const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' })
+  if (error) {
+    msg.textContent = 'Código incorrecto o caducado. Inténtalo de nuevo.'; msg.classList.add('error')
+    btn.disabled = false; btn.textContent = 'Verificar código'
+    return
+  }
+  // onAuthStateChange se encarga de inicializar la app
+}
+
 async function logout() {
   _appReady = false
   await sb.auth.signOut()
