@@ -59,9 +59,14 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .auth-sent-title{font-family:'Special Elite',monospace;font-size:1.1rem;color:var(--ink);margin-bottom:0.5rem}
 .auth-sent-sub{font-size:0.85rem;color:var(--ink-light);font-style:italic;line-height:1.6}
 
-/* ── OTP (código alternativo al magic link) ── */
-.otp-toggle{display:block;margin:1.5rem auto 0;background:none;border:none;font-family:'Special Elite',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--ink-faint);cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color 0.2s;padding:8px}
-.otp-toggle:hover{color:var(--accent)}
+/* ── Elección enlace / código ── */
+.auth-btn-group{display:flex;gap:10px;margin-top:1rem}
+.auth-btn-group .auth-btn{margin-top:0;flex:1}
+.auth-btn-outline{display:block;flex:1;background:none;color:var(--ink);border:1px solid var(--ink);border-radius:3px;padding:13px;font-family:'Special Elite',monospace;font-size:0.85rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;min-height:52px}
+.auth-btn-outline:hover{background:var(--ink);color:var(--paper)}
+.auth-btn-outline:disabled{opacity:0.5;cursor:default}
+
+/* ── OTP (código de verificación) ── */
 .otp-wrap{margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid #c4b49040;text-align:left}
 .otp-label{font-family:'Special Elite',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-faint);display:block;margin-bottom:8px;text-align:left}
 .otp-input{width:100%;background:var(--paper);border:1px solid #c4b49060;border-radius:3px;padding:12px 14px;font-family:'Special Elite',monospace;font-size:20px;letter-spacing:8px;text-align:center;color:var(--ink);outline:none;transition:border-color 0.2s;-webkit-text-size-adjust:100%}
@@ -336,7 +341,10 @@ textarea::placeholder{color:#b8a45a80}
       <div id="auth-form-wrap">
         <label class="auth-label" for="emailInput">Tu correo</label>
         <input class="auth-input" type="email" id="emailInput" placeholder="nombre@correo.com" autocomplete="email">
-        <button class="auth-btn" id="authSubmitBtn" onclick="sendMagicLink()">Entrar con magic link</button>
+        <div class="auth-btn-group">
+          <button class="auth-btn" id="authLinkBtn" onclick="sendMagicLink('link')">Enlace</button>
+          <button class="auth-btn-outline" id="authCodeBtn" onclick="sendMagicLink('code')">Código</button>
+        </div>
         <div class="auth-msg" id="authMsg"></div>
       </div>
     </div>
@@ -460,7 +468,7 @@ const DB = {
   async getMemoriesForDay(mm, dd, currentYear) {
     const { data, error } = await sb
       .from('entries').select('*')
-      .filter('date', 'like', `%-${mm}-${dd}`)
+      .filter('date::text', 'like', `%-${mm}-${dd}`)
       .order('date', { ascending: false })
     if (error) { console.error('getMemoriesForDay:', error); return [] }
     return (data || []).filter(e => parseInt(e.date.split('-')[0]) < currentYear)
@@ -576,46 +584,48 @@ async function exportData() {
 // ─────────────────────────────────────────────
 // AUTH
 // ─────────────────────────────────────────────
-async function sendMagicLink() {
+async function sendMagicLink(mode) {
   const email = document.getElementById('emailInput').value.trim()
   const msg = document.getElementById('authMsg')
-  const btn = document.getElementById('authSubmitBtn')
+  const linkBtn = document.getElementById('authLinkBtn')
+  const codeBtn = document.getElementById('authCodeBtn')
   if (!email||!email.includes('@')) {
     msg.textContent='Escribe un correo válido.'; msg.classList.add('error'); return
   }
-  btn.disabled=true; btn.textContent='Enviando...'; msg.textContent=''; msg.classList.remove('error')
+  linkBtn.disabled=true; codeBtn.disabled=true
+  msg.textContent = mode==='code' ? 'Enviando código...' : 'Enviando enlace...'
+  msg.classList.remove('error')
   const {error} = await sb.auth.signInWithOtp({
     email, options:{shouldCreateUser:true, emailRedirectTo:'https://recuerdate.app'}
   })
   if (error) {
     msg.textContent='Error al enviar. Inténtalo de nuevo.'; msg.classList.add('error')
-    btn.disabled=false; btn.textContent='Entrar con magic link'; return
+    linkBtn.disabled=false; codeBtn.disabled=false; return
   }
-  document.getElementById('auth-form-wrap').innerHTML = `
-    <div class="auth-sent">
-      <div class="auth-sent-icon">✉️</div>
-      <div class="auth-sent-title">Revisa tu correo</div>
-      <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${esc(email)}</strong><br><br>Haz clic en él para entrar.<br><br><span style="font-size:0.8rem;opacity:0.7">¿No lo ves? Revisa la carpeta de spam.</span></div>
-      <button class="otp-toggle" id="otpToggleBtn" onclick="showOtpInput('${esc(email)}')">¿Prefieres introducir el código?</button>
-    </div>`
-}
-
-function showOtpInput(email) {
-  const toggleBtn = document.getElementById('otpToggleBtn')
-  if (toggleBtn) toggleBtn.remove()
-  const sentBlock = document.querySelector('.auth-sent')
-  const otpBlock = document.createElement('div')
-  otpBlock.className = 'otp-wrap'
-  otpBlock.innerHTML = `
-    <label class="otp-label" for="otpInput">Código de 6 dígitos</label>
-    <input class="otp-input" type="text" id="otpInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="······" autocomplete="one-time-code">
-    <button class="otp-verify-btn" id="otpVerifyBtn" onclick="verifyOtp('${esc(email)}')">Verificar código</button>
-    <div class="auth-msg" id="otpMsg"></div>`
-  sentBlock.appendChild(otpBlock)
-  document.getElementById('otpInput').focus()
-  document.getElementById('otpInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') verifyOtp(email)
-  })
+  if (mode === 'code') {
+    document.getElementById('auth-form-wrap').innerHTML = `
+      <div class="auth-sent">
+        <div class="auth-sent-icon">🔢</div>
+        <div class="auth-sent-title">Revisa tu correo</div>
+        <div class="auth-sent-sub">Te hemos enviado un código a<br><strong>${esc(email)}</strong></div>
+        <div class="otp-wrap" style="border-top:none;padding-top:0;">
+          <label class="otp-label" for="otpInput">Código de 6 dígitos</label>
+          <input class="otp-input" type="text" id="otpInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="······" autocomplete="one-time-code">
+          <button class="otp-verify-btn" id="otpVerifyBtn" onclick="verifyOtp('${esc(email)}')">Verificar código</button>
+          <div class="auth-msg" id="otpMsg"></div>
+        </div>
+      </div>`
+    const otpInput = document.getElementById('otpInput')
+    otpInput.focus()
+    otpInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyOtp(email) })
+  } else {
+    document.getElementById('auth-form-wrap').innerHTML = `
+      <div class="auth-sent">
+        <div class="auth-sent-icon">✉️</div>
+        <div class="auth-sent-title">Revisa tu correo</div>
+        <div class="auth-sent-sub">Te hemos enviado un enlace mágico a<br><strong>${esc(email)}</strong><br><br>Haz clic en él para entrar.<br><br><span style="font-size:0.8rem;opacity:0.7">¿No lo ves? Revisa la carpeta de spam.</span></div>
+      </div>`
+  }
 }
 
 async function verifyOtp(email) {
@@ -643,7 +653,10 @@ async function logout() {
   document.getElementById('auth-form-wrap').innerHTML = `
     <label class="auth-label" for="emailInput">Tu correo</label>
     <input class="auth-input" type="email" id="emailInput" placeholder="nombre@correo.com" autocomplete="email">
-    <button class="auth-btn" id="authSubmitBtn" onclick="sendMagicLink()">Entrar con magic link</button>
+    <div class="auth-btn-group">
+      <button class="auth-btn" id="authLinkBtn" onclick="sendMagicLink('link')">Enlace</button>
+      <button class="auth-btn-outline" id="authCodeBtn" onclick="sendMagicLink('code')">Código</button>
+    </div>
     <div class="auth-msg" id="authMsg"></div>`
 }
 function showScreen(name) {
@@ -987,7 +1000,10 @@ async function init() {
       document.getElementById('auth-form-wrap').innerHTML = `
         <label class="auth-label" for="emailInput">Tu correo</label>
         <input class="auth-input" type="email" id="emailInput" placeholder="nombre@correo.com" autocomplete="email">
-        <button class="auth-btn" id="authSubmitBtn" onclick="sendMagicLink()">Entrar con magic link</button>
+        <div class="auth-btn-group">
+          <button class="auth-btn" id="authLinkBtn" onclick="sendMagicLink('link')">Enlace</button>
+          <button class="auth-btn-outline" id="authCodeBtn" onclick="sendMagicLink('code')">Código</button>
+        </div>
         <div class="auth-msg" id="authMsg"></div>`
     }
   })
